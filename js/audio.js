@@ -83,8 +83,12 @@ window.Sfx = (function () {
       muted = !muted;
       try { localStorage.setItem('saberduel.muted', muted ? '1' : '0'); } catch (e) { /* ignore */ }
       if (master) master.gain.value = muted ? 0 : 0.8;
+      if (window.Bgm) Bgm.syncVolume();
       return muted;
     },
     get muted() { return muted; },
+    get ctx() { return ac; },
+    get out() { return master; },
+    get noiseBuf() { return noiseBuf; },
   };
 })();

@@ -30,6 +30,19 @@
   syncMute();
   muteBtn.addEventListener('click', () => { Sfx.init(); Sfx.toggleMute(); syncMute(); });
 
+  // ----- 배경음악 -----
+  const syncBgm = () => {
+    $('#bgm-source').textContent = Bgm.source;
+    $('#bgm-clear').hidden = !Bgm.hasFile;
+  };
+  Bgm.init(syncBgm);
+  $('#bgm-file').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) { Sfx.init(); Bgm.setFile(f); }
+    e.target.value = '';
+  });
+  $('#bgm-clear').addEventListener('click', () => Bgm.clearFile());
+
   // ----- 선택 화면 -----
   const picks = $$('.pick');
   function renderPick(side) {
@@ -63,6 +76,7 @@
 
   function openSelect() {
     game.stop();
+    Bgm.stop();
     $('.diff').classList.toggle('hidden', mode !== '1p');
     renderPick(0); renderPick(1); renderDiff();
     show('#screen-select');
@@ -71,6 +85,7 @@
   function startMatch() {
     Sfx.init();
     game.start({ mode, p1: { ...sel.p[0] }, p2: { ...sel.p[1] }, level: sel.level });
+    Bgm.start(); // 스테이지 시작 시 BGM
     show(null);
   }
   $('#btn-fight').addEventListener('click', startMatch);
@@ -79,15 +94,16 @@
   // ----- 일시정지 / 결과 -----
   $('#btn-pause').addEventListener('click', (e) => {
     e.stopPropagation();
-    game.paused = true; Sfx.stopHum();
+    game.paused = true; Sfx.stopHum(); Bgm.pause();
     show('#screen-pause');
   });
   $('#btn-resume').addEventListener('click', () => {
     game.paused = false;
+    Bgm.resume();
     if (game.state === 'fight' || game.state === 'countdown') Sfx.startHum();
     show(null);
   });
-  const toMenu = () => { game.stop(); show('#screen-title'); };
+  const toMenu = () => { game.stop(); Bgm.stop(); show('#screen-title'); };
   $('#btn-quit').addEventListener('click', toMenu);
   $('#btn-menu').addEventListener('click', toMenu);
   $('#btn-rematch').addEventListener('click', startMatch);

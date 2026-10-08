@@ -47,6 +47,12 @@ html, body {
 #hud { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 #hud .icon-btn { pointer-events: auto; left: 50%; right: auto; transform: translateX(-50%); font-size: 14px; }
 
+/* BGM */
+.bgm-row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; max-width: 92vw; }
+.bgm-label { font-weight: 900; letter-spacing: 0.15em; color: #6fb6ff; font-size: clamp(11px, 2.6vh, 14px); }
+.bgm-source { font-size: clamp(11px, 2.6vh, 14px); opacity: 0.85; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+label.btn { display: inline-flex; align-items: center; }
+
 /* 캐릭터 선택 */
 #screen-select { background: rgba(14, 3, 2, 0.82); }
 .sel-wrap { display: flex; align-items: center; justify-content: center; gap: 2vw; width: 100%; max-width: 1000px; height: 100%; }

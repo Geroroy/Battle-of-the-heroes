@@ -21,6 +21,13 @@
       <button class="btn primary" data-mode="1p">1P vs CPU</button>
       <button class="btn" data-mode="2p">2P 대결 (한 기기)</button>
     </div>
+    <div class="bgm-row">
+      <span class="bgm-label">BGM</span>
+      <span id="bgm-source" class="bgm-source">유튜브 불러오는 중…</span>
+      <label class="btn small" for="bgm-file">음악 파일 선택</label>
+      <input id="bgm-file" type="file" accept="audio/*" hidden>
+      <button id="bgm-clear" class="btn small" hidden>파일 해제</button>
+    </div>
     <p class="help">탭 = 상대에게 점프하며 베기 · 공중에서 한 번 더 탭 가능<br>광선검끼리 부딪히면 튕겨나고, 몸에 닿으면 한 방! 용암에 빠지면 패배. 5점 선취 승리.</p>
     <button id="btn-mute" class="icon-btn" aria-label="소리">🔊</button>
   </section>
@@ -98,6 +105,7 @@
   <script src="js/effects.js"></script>
   <script src="js/arena.js"></script>
   <script src="js/fighter.js"></script>
+  <script src="js/bgm.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
