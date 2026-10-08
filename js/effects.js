@@ -42,26 +42,29 @@ class Effects {
     }
   }
 
+  // 2유닛(=1픽셀) 격자에 맞춘 사각 픽셀로 그림
   draw(ctx) {
+    const q = Skins.q;
     for (const o of this.p) {
+      if (o.t !== 'smoke' && o.t !== 'dust') continue;
       const a = Math.max(0, o.life / o.max);
-      if (o.t === 'smoke') {
-        ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#3a3330';
-        ctx.beginPath(); ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2); ctx.fill();
-      } else if (o.t === 'dust') {
-        ctx.globalAlpha = a * 0.5; ctx.fillStyle = '#5d4a40';
-        ctx.beginPath(); ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2); ctx.fill();
-      }
+      ctx.globalAlpha = o.t === 'smoke' ? a * 0.4 : a * 0.6;
+      ctx.fillStyle = o.t === 'smoke' ? '#3a3330' : '#5d4a40';
+      const r = q(o.size);
+      ctx.fillRect(q(o.x) - r, q(o.y) - r, r * 2 + 2, r * 2 + 2);
     }
     ctx.globalCompositeOperation = 'lighter';
     for (const o of this.p) {
       const a = Math.max(0, o.life / o.max);
       if (o.t === 'spark') {
-        ctx.globalAlpha = a; ctx.strokeStyle = o.col; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(o.x - o.vx * 1.8, o.y - o.vy * 1.8); ctx.stroke();
+        ctx.globalAlpha = a; ctx.fillStyle = o.col;
+        ctx.fillRect(q(o.x), q(o.y), 2, 2);
+        ctx.globalAlpha = a * 0.5;
+        ctx.fillRect(q(o.x - o.vx), q(o.y - o.vy), 2, 2);
       } else if (o.t === 'ember') {
         ctx.globalAlpha = a; ctx.fillStyle = a > 0.5 ? '#ffb347' : '#ff5a1f';
-        ctx.beginPath(); ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2); ctx.fill();
+        const n = o.size > 2.6 ? 4 : 2;
+        ctx.fillRect(q(o.x), q(o.y), n, n);
       }
     }
     ctx.globalCompositeOperation = 'source-over';

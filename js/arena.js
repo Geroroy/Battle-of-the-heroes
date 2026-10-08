@@ -1,7 +1,7 @@
 // 무스타파 결투장: 정적 배경(오프스크린 캔버스) + 움직이는 용암
 window.Arena = (function () {
   const { W, H, PLAT, LAVA_Y } = CFG;
-  let bg = null, bgScale = 0;
+  let bg = null;
 
   function mountain(g, pts, col) {
     g.fillStyle = col; g.beginPath(); g.moveTo(pts[0], pts[1]);
@@ -9,11 +9,34 @@ window.Arena = (function () {
     g.closePath(); g.fill();
   }
 
-  function build(scale) {
+  // 무스타파 팔레트 (배경을 이 색들로 디더링해 픽셀 아트처럼 만듦)
+  const PALETTE = [
+    '#070102', '#120304', '#1d0605', '#2a0a07', '#3b0e08', '#53150a', '#6e1e0b', '#8c2b0d', '#a8380f',
+    '#c64a12', '#e0621a', '#f5832a', '#ffa83f', '#ffd27a', '#fff0c0',
+    '#0b0b0e', '#141418', '#1e1f24', '#2a2b31', '#383a42', '#4c4e58', '#686b76', '#8d909b',
+  ].map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+  function quantize(g, w, h) {
+    const img = g.getImageData(0, 0, w, h), d = img.data;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, t = (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * 22;
+      const r = d[i] + t, gg = d[i + 1] + t, b = d[i + 2] + t;
+      let best = 0, bd = Infinity;
+      for (let k = 0; k < PALETTE.length; k++) {
+        const p = PALETTE[k], dd = (p[0] - r) ** 2 * 0.3 + (p[1] - gg) ** 2 * 0.59 + (p[2] - b) ** 2 * 0.11;
+        if (dd < bd) { bd = dd; best = k; }
+      }
+      d[i] = PALETTE[best][0]; d[i + 1] = PALETTE[best][1]; d[i + 2] = PALETTE[best][2]; d[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }
+
+  function build() {
     const c = document.createElement('canvas');
-    c.width = Math.round(W * scale); c.height = Math.round(H * scale);
+    c.width = W / 2; c.height = H / 2;
     const g = c.getContext('2d');
-    g.scale(scale, scale);
+    g.scale(0.5, 0.5);
 
     // 하늘
     const sky = g.createLinearGradient(0, 0, 0, LAVA_Y);
@@ -77,17 +100,25 @@ window.Arena = (function () {
     g.fillStyle = '#ff8a2a';
     for (let x = PLAT.left + 20; x < PLAT.right; x += 60) g.fillRect(x, PLAT.top + 12, 5, 3);
 
-    bg = c; bgScale = scale;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    quantize(g, c.width, c.height);
+    // 플랫폼 윗면 하이라이트 & 경고등은 디더링 후 선명하게
+    g.fillStyle = '#8d909b'; g.fillRect((PLAT.left - 6) / 2, PLAT.top / 2, (PLAT.right - PLAT.left + 12) / 2, 1);
+    g.fillStyle = '#ffa83f';
+    for (let x = PLAT.left + 20; x < PLAT.right; x += 60) g.fillRect(Math.round(x / 2), PLAT.top / 2 + 6, 2, 1);
+    bg = c;
   }
 
-  function drawBack(ctx, scale) {
-    if (!bg || Math.abs(bgScale - scale) > 0.01) build(scale);
+  function drawBack(ctx) {
+    if (!bg) build();
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(bg, 0, 0, W, H);
   }
 
   // 화면 비율이 16:9가 아닐 때 남는 여백을 배경으로 채움
   function drawCover(ctx, cw, ch) {
     if (!bg) return;
+    ctx.imageSmoothingEnabled = false;
     const k = Math.max(cw / bg.width, ch / bg.height);
     const w = bg.width * k, h = bg.height * k;
     ctx.drawImage(bg, (cw - w) / 2, ch - h, w, h);
@@ -95,29 +126,26 @@ window.Arena = (function () {
     ctx.fillRect(0, 0, cw, ch);
   }
 
+  // 용암: 2유닛(1픽셀) 열 단위로 물결 표면 + 색 띠
+  const LAVA_BANDS = [[0, '#fff0c0'], [2, '#ffd27a'], [4, '#ffa83f'], [8, '#f5832a'], [14, '#e0621a'], [22, '#c64a12'], [34, '#a8380f'], [48, '#8c2b0d']];
   function drawLava(ctx, t) {
-    // 용암 반사광
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const glow = ctx.createLinearGradient(0, LAVA_Y - 140, 0, LAVA_Y);
-    glow.addColorStop(0, 'rgba(255,90,20,0)'); glow.addColorStop(1, 'rgba(255,90,20,0.18)');
-    ctx.fillStyle = glow; ctx.fillRect(0, LAVA_Y - 140, W, 140);
-    ctx.restore();
-
-    const lg = ctx.createLinearGradient(0, LAVA_Y - 6, 0, H);
-    lg.addColorStop(0, '#ffb238'); lg.addColorStop(0.15, '#ff6a14'); lg.addColorStop(0.6, '#b51d04'); lg.addColorStop(1, '#4d0a02');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.moveTo(0, H);
-    for (let x = 0; x <= W; x += 16) {
-      ctx.lineTo(x, LAVA_Y + Math.sin(x * 0.03 + t * 0.04) * 3 + Math.sin(x * 0.011 - t * 0.025) * 3);
+    const surf = (x) => Math.floor((LAVA_Y + Math.sin(x * 0.03 + t * 0.04) * 3 + Math.sin(x * 0.011 - t * 0.025) * 3) / 2) * 2;
+    // 아래쪽 넓은 띠
+    ctx.fillStyle = LAVA_BANDS[6][1]; ctx.fillRect(0, LAVA_Y + 26, W, H);
+    ctx.fillStyle = LAVA_BANDS[7][1]; ctx.fillRect(0, LAVA_Y + 48, W, H);
+    // 표면 (열마다 물결 높이에 맞춰 색 띠)
+    for (let x = 0; x < W; x += 2) {
+      const y = surf(x);
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = LAVA_BANDS[i][1];
+        ctx.fillRect(x, y + LAVA_BANDS[i][0], 2, LAVA_BANDS[i + 1][0] - LAVA_BANDS[i][0]);
+      }
     }
-    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
-    // 용암 표면 무늬
-    ctx.strokeStyle = 'rgba(255,220,120,0.5)'; ctx.lineWidth = 2;
-    for (let i = 0; i < 9; i++) {
-      const x = ((i * 113 + t * 0.6) % (W + 80)) - 40, y = LAVA_Y + 16 + (i % 3) * 14;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 18, y - 4, x + 36, y); ctx.stroke();
+    // 흐르는 무늬
+    ctx.fillStyle = '#ffd27a';
+    for (let i = 0; i < 12; i++) {
+      const x = Math.floor((((i * 113 + t * 0.6) % (W + 80)) - 40) / 2) * 2, y = LAVA_Y + 18 + (i % 3) * 14;
+      ctx.fillRect(x, y, 10, 2); ctx.fillRect(x + 10, y - 2, 8, 2); ctx.fillRect(x + 18, y, 8, 2);
     }
   }
 

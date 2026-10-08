@@ -3,6 +3,10 @@ class Game {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    // 저해상도 픽셀 버퍼 (논리 960x540 → 480x270)
+    this.buf = document.createElement('canvas');
+    this.buf.width = CFG.W / 2; this.buf.height = CFG.H / 2;
+    this.bctx = this.buf.getContext('2d');
     this.effects = new Effects();
     this.pieces = [];
     this.f = [];
@@ -201,37 +205,43 @@ class Game {
   }
 
   render() {
-    const ctx = this.ctx, d = this.dpr, s = this.scale;
+    const ctx = this.ctx, d = this.dpr, s = this.scale, b = this.bctx;
+    let sx = 0, sy = 0;
+    if (this.shake > 0 && !this.paused) {
+      sx = Math.round(U.rand(-1, 1) * this.shake / 2); sy = Math.round(U.rand(-1, 1) * this.shake / 2);
+      this.shake *= 0.85; if (this.shake < 0.5) this.shake = 0;
+    }
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.imageSmoothingEnabled = false;
+    b.setTransform(0.5, 0, 0, 0.5, sx, sy);
+    Arena.drawBack(b);
+    for (const p of this.pieces) p.draw(b);
+    for (const f of this.f) f.draw(b);
+    this.effects.draw(b);
+    Arena.drawLava(b, this.frame);
+    if (this.flash > 0) {
+      b.fillStyle = `rgba(255,255,255,${this.flash * 0.05})`;
+      b.fillRect(0, 0, CFG.W, CFG.H);
+      if (!this.paused) this.flash--;
+    }
+
+    // 화면으로 확대 (최근접 보간 → 선명한 픽셀)
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#120403';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     Arena.drawCover(ctx, this.canvas.width, this.canvas.height);
-
-    let sx = 0, sy = 0;
-    if (this.shake > 0 && !this.paused) {
-      sx = U.rand(-1, 1) * this.shake; sy = U.rand(-1, 1) * this.shake;
-      this.shake *= 0.85; if (this.shake < 0.5) this.shake = 0;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.buf, Math.round(this.offX * d), Math.round(this.offY * d), Math.round(CFG.W * s * d), Math.round(CFG.H * s * d));
+    if (this.running) {
+      ctx.setTransform(s * d, 0, 0, s * d, this.offX * d, this.offY * d);
+      this.drawHUD(ctx);
     }
-    ctx.setTransform(s * d, 0, 0, s * d, (this.offX + sx * s) * d, (this.offY + sy * s) * d);
-    Arena.drawBack(ctx, s * d);
-
-    for (const p of this.pieces) p.draw(ctx);
-    for (const f of this.f) f.draw(ctx);
-    this.effects.draw(ctx);
-    Arena.drawLava(ctx, this.frame);
-
-    if (this.flash > 0) {
-      ctx.fillStyle = `rgba(255,255,255,${this.flash * 0.05})`;
-      ctx.fillRect(0, 0, CFG.W, CFG.H);
-      if (!this.paused) this.flash--;
-    }
-    if (this.running) this.drawHUD(ctx);
   }
 
   drawHUD(ctx) {
     const W = CFG.W;
     ctx.save();
-    ctx.font = '700 18px system-ui, sans-serif';
+    ctx.font = "14px 'Press Start 2P', monospace";
     ctx.textBaseline = 'top';
     for (let i = 0; i < 2; i++) {
       const f = this.f[i];
@@ -240,20 +250,21 @@ class Game {
       ctx.textAlign = left ? 'left' : 'right';
       ctx.fillStyle = '#ffe9a8';
       const label = this.cfg.mode === '1p' && i === 1 ? `CPU · ${f.data.short}` : `P${i + 1} · ${f.data.short}`;
-      ctx.fillText(label, x, 18);
+      ctx.fillText(label, x, 20);
       for (let k = 0; k < CFG.WIN_SCORE; k++) {
         const px = left ? x + 8 + k * 22 : x - 8 - k * 22;
-        ctx.beginPath(); ctx.arc(px, 50, 7, 0, Math.PI * 2);
-        ctx.fillStyle = k < this.score[i] ? f.data.blade : 'rgba(255,255,255,0.12)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,233,168,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#120a08';
+        ctx.fillRect(px - 8, 44, 16, 16);
+        ctx.fillStyle = k < this.score[i] ? f.data.blade : '#3a2a22';
+        ctx.fillRect(px - 6, 46, 12, 12);
+        if (k < this.score[i]) { ctx.fillStyle = '#e8f3ff'; ctx.fillRect(px - 4, 48, 4, 4); }
       }
     }
 
     // 2P 조작 안내 (첫 라운드 카운트다운)
     if (this.state === 'countdown' && this.round === 1) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '600 16px system-ui, sans-serif';
+      ctx.font = "600 16px system-ui, sans-serif";
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       if (this.cfg.mode === '2p') {
         ctx.fillText('P1: 화면 왼쪽 탭 / A키', W * 0.25, 120);
@@ -273,15 +284,15 @@ class Game {
       const alpha = b.t > 70 ? (90 - b.t) / 20 : 1;
       ctx.globalAlpha = alpha;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `900 ${Math.round(56 * (0.6 + pop * 0.4))}px system-ui, sans-serif`;
+      ctx.font = `${Math.round(40 * (0.6 + pop * 0.4))}px 'Press Start 2P', system-ui, sans-serif`;
       ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.strokeText(b.text, W / 2, 200);
+      ctx.fillStyle = '#7a2a00';
+      ctx.fillText(b.text, W / 2 + 4, 204);
       ctx.fillStyle = '#ffe14d';
-      ctx.shadowColor = '#ff9a2a'; ctx.shadowBlur = 18;
       ctx.fillText(b.text, W / 2, 200);
-      ctx.shadowBlur = 0;
       if (b.sub) {
-        ctx.font = '700 22px system-ui, sans-serif';
+        ctx.font = "700 22px system-ui, sans-serif";
         ctx.fillStyle = '#ffd0a0';
         ctx.fillText(b.sub, W / 2, 248);
       }

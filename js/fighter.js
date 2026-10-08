@@ -30,6 +30,7 @@
       this.char = charId;
       this.skin = skin;
       this.data = Skins.CHARACTERS[charId];
+      this.spr = Skins.newSprite();
       this.reset(side === 0 ? 300 : 660, side === 0 ? 1 : -1);
     }
 
@@ -206,25 +207,31 @@
       this.bladeOn = false;
       const pose = this.pose();
       const push = attacker ? attacker.facing : -this.facing;
-      const mk = (parts, px, py, r, cuts, dvx, dvy, dav) => {
+      // cut: { y: 절단 위치(로컬 픽셀), clear: 'below'|'above'|null, spot: 작은 절단면만 표시 }
+      const mk = (parts, px, py, r, cut, dvx, dvy, dav) => {
+        const spr = Skins.newSprite();
+        Skins.compose(spr, this.char, this.skin, pose, parts);
+        const canvas = spr.body;
+        canvas.getContext('2d').drawImage(spr.arm, 0, 0);
+        bakeCut(canvas, cut);
         const w = this.l2w(px, py);
         game.pieces.push(new Piece({
-          kind: 'body', char: this.char, skin: this.skin, pose, parts, px, py, r, cuts,
+          kind: 'body', canvas, px, py, r, smokeY: cut.y * 2,
           x: w.x, y: w.y, angle: this.angle, facing: this.facing,
           vx: this.vx * 0.5 + dvx, vy: Math.min(this.vy, 0) + dvy, av: this.av * 0.5 + dav,
         }));
       };
       if (part === 'head') {
-        mk({ head: true }, 2, -43, 12, [-31], push * U.rand(2, 4), U.rand(-9, -6), U.rand(-0.4, 0.4));
-        mk({ legs: true, torso: true, frontArm: true }, 0, -5, 22, [-31], push * 1.5, -2, push * 0.05);
+        mk({ head: true }, 2, -43, 12, { y: -15 }, push * U.rand(2, 4), U.rand(-9, -6), U.rand(-0.4, 0.4));
+        mk({ legs: true, torso: true, frontArm: true }, 0, -5, 22, { y: -17, spot: true }, push * 1.5, -2, push * 0.05);
       } else {
-        mk({ torso: true, head: true, frontArm: true }, 0, -22, 19, [8], push * U.rand(2.5, 4), U.rand(-7, -4), U.rand(-0.25, 0.25));
-        mk({ legs: true }, 0, 22, 15, [8], push * 1, -2, push * 0.08);
+        mk({ torso: true, head: true, frontArm: true }, 0, -22, 19, { y: 4, clear: 'below' }, push * U.rand(2.5, 4), U.rand(-7, -4), U.rand(-0.25, 0.25));
+        mk({ legs: true }, 0, 22, 15, { y: 2 }, push * 1, -2, push * 0.08);
       }
       // 떨어지는 광선검 손잡이
       const hc = { x: (this.hilt.x1 + this.hilt.x2) / 2, y: (this.hilt.y1 + this.hilt.y2) / 2 };
       game.pieces.push(new Piece({
-        kind: 'hilt', hiltStyle: this.data.hilt, px: 0, py: 0, r: 4, cuts: [], facing: 1,
+        kind: 'hilt', hiltStyle: this.data.hilt, px: 0, py: 0, r: 4, facing: 1,
         x: hc.x, y: hc.y, angle: Math.atan2(this.hilt.y2 - this.hilt.y1, this.hilt.x2 - this.hilt.x1),
         vx: this.vx + U.rand(-3, 3), vy: U.rand(-9, -5), av: U.rand(-0.5, 0.5),
       }));
@@ -235,26 +242,43 @@
 
     draw(ctx) {
       if (this.gone) return;
-      const pose = this.pose();
-      if (!this.dead || this.burning) {
-        ctx.save();
-        ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.scale(this.facing, 1);
-        Skins.drawBody(ctx, this.char, this.skin, pose, { legs: true, torso: true, head: true });
-        ctx.restore();
+      Skins.compose(this.spr, this.char, this.skin, this.pose());
+      if (this.dead) {
+        if (this.burning) {
+          Skins.blit(ctx, this.spr.body, this.x, this.y, this.angle, this.facing);
+          Skins.blit(ctx, this.spr.arm, this.x, this.y, this.angle, this.facing);
+        }
+        return;
       }
-      if (this.dead) return;
+      Skins.blit(ctx, this.spr.body, this.x, this.y, this.angle, this.facing);
       const h = this.hilt;
       Skins.drawHilt(ctx, h.x1, h.y1, h.x2, h.y2, this.data.hilt);
-      ctx.save();
-      ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.scale(this.facing, 1);
-      Skins.drawBody(ctx, this.char, this.skin, pose, { frontArm: true });
-      ctx.restore();
+      Skins.blit(ctx, this.spr.arm, this.x, this.y, this.angle, this.facing);
       if (this.bladeLen > 0) {
         if (this.bladeSpeed() > 6) Skins.drawTrail(ctx, this.trail, this.data.blade);
         const b = this.blade;
         Skins.drawBlade(ctx, b.x1, b.y1, b.x2, b.y2, this.data.blade);
       }
     }
+  }
+
+  // 광선검에 지져진 절단면을 스프라이트에 새김
+  function bakeCut(canvas, cut) {
+    const g = canvas.getContext('2d');
+    const row = Skins.OY + cut.y;
+    if (cut.clear === 'below') g.clearRect(0, row + 1, canvas.width, canvas.height);
+    if (cut.spot) {
+      g.fillStyle = '#ff7a20'; g.fillRect(Skins.OX - 2, row, 5, 2);
+      g.fillStyle = '#ffd27a'; g.fillRect(Skins.OX - 1, row, 3, 1);
+      return;
+    }
+    const img = g.getImageData(0, row, canvas.width, 1);
+    for (let x = 0; x < canvas.width; x++) {
+      if (img.data[x * 4 + 3] === 0) continue;
+      const hot = img.data[(x - 1) * 4 + 3] && img.data[(x + 1) * 4 + 3];
+      img.data[x * 4] = 255; img.data[x * 4 + 1] = hot ? 210 : 122; img.data[x * 4 + 2] = hot ? 122 : 32;
+    }
+    g.putImageData(img, 0, row);
   }
 
   // 잘린 신체 / 떨어진 광선검 조각
@@ -285,36 +309,19 @@
       // 절단면에서 연기
       if (this.kind === 'body' && this.t < 150 && this.t % 7 === 0) {
         const c = Math.cos(this.angle), s = Math.sin(this.angle);
-        const ly = this.cuts[0] - this.py;
+        const ly = this.smokeY - this.py;
         game.effects.smoke(this.x - ly * s, this.y + ly * c, 1);
       }
     }
 
     draw(ctx) {
       if (this.gone) return;
-      ctx.save();
-      ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.scale(this.facing, 1);
-      ctx.translate(-this.px, -this.py);
       if (this.kind === 'hilt') {
-        Skins.drawHilt(ctx, -7, 0, 7, 0, this.hiltStyle);
+        const c = Math.cos(this.angle) * 7, sn = Math.sin(this.angle) * 7;
+        Skins.drawHilt(ctx, this.x - c, this.y - sn, this.x + c, this.y + sn, this.hiltStyle);
       } else {
-        Skins.drawBody(ctx, this.char, this.skin, this.pose, this.parts);
-        // 광선검에 지져진 절단면
-        const a = Math.max(0, 1 - this.t / 240);
-        if (a > 0) {
-          ctx.globalCompositeOperation = 'lighter';
-          for (const cy of this.cuts) {
-            ctx.globalAlpha = a;
-            ctx.fillStyle = '#ff7a20';
-            ctx.beginPath(); ctx.ellipse(1, cy, 11, 3, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#ffe2a0';
-            ctx.beginPath(); ctx.ellipse(1, cy, 6, 1.4, 0, 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = 1;
-        }
+        Skins.blit(ctx, this.canvas, this.x, this.y, this.angle, this.facing, this.px, this.py);
       }
-      ctx.restore();
     }
   }
 
