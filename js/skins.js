@@ -57,139 +57,89 @@
     },
   };
 
-  // ---------- 머리 (손으로 찍은 격자, 외곽선 포함) ----------
-  // Bloody Bastards 처럼 정면에 가까운 3/4 얼굴 (두 눈·굵은 눈썹·정면 코·입). 바라보는 쪽(오른쪽)으로 살짝 돌림
-  // 중심 (13, 16), 목 아래끝 = 29행
+  // ---------- 머리 (Bloody Bastards 식 큰 정면 얼굴, 30x32, 외곽선은 자동) ----------
+  // 중심 (15, 17), 목 아래끝 = 31행. k = 얼굴 안쪽 진한 선(눈꺼풀·입)
   const HEADS = {
-    anakin: [ // 웨이브 진 중간 길이 갈색 머리 (가르마, 귀를 덮음) + 왼쪽 눈 위아래 흉터
-      '.........kkkkkkkk.........',
-      '......kkkhhhhhhhhkkk......',
-      '.....khhhhiiihhhhhhhk.....',
-      '....khhhhiiiiihhhhhhhk....',
-      '...khhhhhhiihhhhhhihhhk...',
-      '..khhhhhhhhhhHhhhhiihhhk..',
-      '..khhHhhhhhhHhhhhhhhhhhk..',
-      '.khhHhhhhhhsshhhhhhhhhhhk.',
-      '.khHhhhhssssssshhhhhshhhk.',
-      '.khHhhhsssssssssshhssshhk.',
-      '.khHhhssssssssssssssssshk.',
-      '.khHhhsxssssssssssssssshk.',
-      '.khHhhsHHHHssssHHHHHsshhk.',
-      '.khHhhskkkkssssskkkkssShk.',
-      '.khHhhSwewSssssswweSssShk.',
-      '.khHhhSsxSsssSssssSsssshk.',
-      '.khHhhSsxsssSsssssssssShk.',
-      '.kHHhhSssssSSsSsssssssShk.',
-      '.kHHhhhSsssssSSsssssssShk.',
-      '.kHHhhhSssssssssssssssShk.',
-      '.kHHhhhhSssmmmmmmssssShhk.',
-      '.kHhhhhhSsssSSSSsssssShhk.',
-      '..kHhhhhkSsssssssssssShk..',
-      '..kHhhhk.kSssssssssSSkk...',
-      '...kHhk...kSSssssSSk......',
-      '....kk.....kkSSSSkk.......',
-      '...........kSSSSSk........',
-      '...........kSSSSSk........',
-      '...........kSSSSSk........',
-      '...........kkkkkkk........',
+    anakin: [
+      '..........hhhhhhhhh...........',
+      '.......hhhhhiiihhhhhhh........',
+      '.....hhhhhhiiiiihhhhhhhh......',
+      '....hhhhhhhhiihhhhhhihhhh.....',
+      '...hhhhhHhhhhhhhhhhhiihhhh....',
+      '..hhhhhHhhhhhhHhhhhhhhhhhhh...',
+      '..hhhhHhhhhhhHhhhhhhhhhhhhh...',
+      '.hhhhHhhhhhhsshhhhhhhhshhhhh..',
+      '.hhhHhhhhssssssshhhhhssshhhh..',
+      '.hhhHhhssssssssssshhsssshhhh..',
+      '.hhhHhsssssssssssssssssssHhh..',
+      '.hhhHhssssssssssssssssssssHh..',
+      '.hhhHhsxsssssssssssssssssssh..',
+      '.hhhHssHHHHHsssssHHHHHHsssshh.',
+      '.hhhHssskkkksssssskkkkkssssh..',
+      '.hhhHsSswwesSsssssswweeSsssh..',
+      '.hhhHsSsxsSssssSsssSSsssssSh..',
+      '.hhhHsSsxssssssSsssssssssSSh..',
+      '.hhHHsSssssssssSSsssssssssSh..',
+      '.hhHHhSssssssSSSSSsssssssSSh..',
+      '.hhHHhSssssssssssssssssssSh...',
+      '.hhHHhSSsssssssssssssssSSSh...',
+      '.hhHHhhSsssskkkkkkkssssSShh...',
+      '.hhHhhhSSsssssSSSsssssSShhh...',
+      '..hHhhhhSSssssssssssssSShhh...',
+      '..hHhhhh.SSsssssssssSSS.hh....',
+      '...hhhh...SSSssssssSSS........',
+      '....hh......SSSSSSSS..........',
+      '............SSSSSSS...........',
+      '............SSSSSSS...........',
+      '............SSSSSSS...........',
+      '............SSSSSSS...........',
     ],
-    obiwan: [ // 뒤로 넘긴 생강색 머리 + 짧게 다듬은 턱수염과 콧수염
-      '..........kkkkkk..........',
-      '.......kkkhhhhhhkkk.......',
-      '.....kkhhhiiiiihhhhkk.....',
-      '....khhhhhhiiiiihhhhhk....',
-      '...khhhhhhhhhhhhhhhhhhk...',
-      '...khhHhhhhhhhhhhhhhhhk...',
-      '..khhHhhhhhhhhhhhhhhhhhk..',
-      '..khHhhsssssssssssshhhhk..',
-      '..khHhssssssssssssssshhk..',
-      '..khHssssssssssssssssshk..',
-      '..kHhssssssssssssssssshk..',
-      '.kSHhsHHHHssssssHHHHHsHk..',
-      '.kSHssskkkkssssskkkkkssSk.',
-      '.kSSsSwewSsssssSwweSsssSk.',
-      '.kSSsssSSsssSsssSSsssssSk.',
-      '..kSssssssssSsssssssssSk..',
-      '..kSsssssssSSSssssssssSk..',
-      '..kHssssssSSsSSssssssHHk..',
-      '..kHhsssshhhhhhhhssshhhk..',
-      '..kHhhhhhhhmmmmmhhhhhhhk..',
-      '..kHhhhhhhhhhhhhhhhhhhhk..',
-      '...kHhhhhhhhhhhhhhhhhhk...',
-      '....kHhhhhhhhhhhhhhhhk....',
-      '.....kkHhhhhhhhhhhhkk.....',
-      '.......kkHhhhhhhhkk.......',
-      '.........kkkkkkkkk........',
-      '...........kSSSSSk........',
-      '...........kSSSSSk........',
-      '...........kSSSSSk........',
-      '...........kkkkkkk........',
-    ],
-    hood: [ // 제다이 후드 (얼굴 둘레를 감싸고 앞머리가 살짝 보임)
-      '........kkkkkkkkk.........',
-      '......kkRRrrrrrRRkk.......',
-      '.....kRrrrrrrrrrrrRk......',
-      '....kRrrrrrrrrrrrrrRk.....',
-      '...kRrrrrrrrrrrrrrrrRk....',
-      '..kRrrrrrkkkkkkkkrrrrRk...',
-      '..kRrrrkkhhhhhhhhkkrrrRk..',
-      '.kRrrrkhhhhhhhhhhhhkrrRk..',
-      '.kRrrrkhhsssssssshhhkrrRk.',
-      '.kRrrkhssssssssssssskrrRk.',
-      '.kRrrkssssssssssssssskrRk.',
-      '.kRrrkssHHHHssssHHHHHkrRk.',
-      '.kRrrksskkkkssssskkkkkrRk.',
-      '.kRrrkSSwewSssssSwweSkrRk.',
-      '.kRrrkSssSSsssSsssSSskrRk.',
-      '.kRrrkSssssssSssssssskrRk.',
-      '.kRrrkSsssssSSSsssssskrRk.',
-      '.kRrrkSssssSSsSSssssskrRk.',
-      '.kRrrrkSsssssssssssskrrRk.',
-      '.kRrrrkSssmmmmmmsssskrrRk.',
-      '.kRrrrrkSsssSSSSsssskrRk..',
-      '..kRrrrrkSssssssssskrrRk..',
-      '..kRRrrrrkkSSSSSSkkrrRRk..',
-      '...kRRrrrrrkkkkkkrrrRRk...',
-      '....kkRRRrrrrrrrrRRRkk....',
-      '......kkkRRRRRRRRkkk......',
-      '.........kkkkkkkkk........',
+    obiwan: [
+      '...........hhhhhhh............',
+      '........hhhhiiiiihhhh.........',
+      '......hhhhhhiiiiiihhhhh.......',
+      '.....hhhhhhhhhiiihhhhhhh......',
+      '....hhhhhhhhhhhhhhhhhhhhh.....',
+      '....hhhHhhhhhhhhhhhhhhhhhh....',
+      '...hhhHhhhhhhhhhhhhhhhhhhh....',
+      '...hhHhhsssssssssssssshhhhh...',
+      '...hhHhssssssssssssssssshhh...',
+      '...hhHsssssssssssssssssssShh..',
+      '...hHssssssssssssssssssssSh...',
+      '..SShsssssssssssssssssssssS...',
+      '..SSsssssssssssssssssssssSS...',
+      '..SSssHHHHHHssssssHHHHHHHsSS..',
+      '..SsssskkkkssssssskkkkkssssS..',
+      '..SssSswwessSssssswweesSssS...',
+      '..SSsSssSSssssSsssssSSssssS...',
+      '...SssssssssssSssssssssssS....',
+      '...ShssssssssSSSssssssssShh...',
+      '...hHssssssSSSSSSsssssssHhh...',
+      '...hHhsshhhhhhhhhhhhhssHhhh...',
+      '...hHhhhhhhhkkkkkkhhhhhhhhh...',
+      '...hHhhhhhhhhmmmmhhhhhhhhhh...',
+      '....hHhhhhhhhhhhhhhhhhhhhh....',
+      '....hHHhhhhhhhhhhhhhhhhhhh....',
+      '.....hHHhhhhhhhhhhhhhhhhh.....',
+      '......hHHhhhhhhhhhhhhhhh......',
+      '........hHHhhhhhhhhhhh........',
+      '...........hhhhhhhh...........',
+      '............SSSSSSS...........',
+      '............SSSSSSS...........',
+      '............SSSSSSS...........',
     ],
   };
-  const HOOD_BEARD = [ // 후드 쓴 오비완의 수염 (덧그림)
-    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-    '.......HssssSSsSSssssH....',
-    '.......HhssshhhhhhsshH....',
-    '.......kHhhhmmmmmmhhHk....',
-    '........kHhhhhhhhhhHk.....',
-    '.........kHhhhhhhhHk......',
-    '..........kkHhhhhkk.......',
-  ];
-  const SCAR = [];
 
   // ---------- 그리기 도구 ----------
   function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   function shadeHex(hex, f) {
     const n = parseInt(hex.slice(1), 16);
-    const r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+    const r = Math.min(255, Math.round(((n >> 16) & 255) * f)), g = Math.min(255, Math.round(((n >> 8) & 255) * f)), b = Math.min(255, Math.round((n & 255) * f));
     return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
   }
   function darkPal(pal, f) { const o = {}; for (const k in pal) o[k] = shadeHex(pal[k], f); return o; }
 
-  function gridCanvas(rows, pal) {
-    const h = rows.length, w = Math.max(1, ...rows.map((r) => r.length));
-    const c = canvas(w, h), g = c.getContext('2d');
-    rows.forEach((r, y) => {
-      for (let x = 0; x < r.length; x++) {
-        const ch = r[x];
-        if (ch === '.' || ch === ' ') continue;
-        const col = ch === 'k' ? OUT : pal[ch];
-        if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
-      }
-    });
-    return c;
-  }
-
-  // 불투명 영역 둘레에 1픽셀 외곽선 자동 추가
+  // 불투명 영역 둘레에 외곽선
   function outline(c) {
     const g = c.getContext('2d'), w = c.width, h = c.height;
     const img = g.getImageData(0, 0, w, h), a = img.data;
@@ -204,196 +154,204 @@
     return c;
   }
 
-  function painter(c, pal) {
-    const g = c.getContext('2d');
-    const col = (k) => (k in pal ? pal[k] : k);
-    return {
-      px(x, y, k) { g.fillStyle = col(k); g.fillRect(x, y, 1, 1); },
-      rect(x, y, w, h, k) { g.fillStyle = col(k); g.fillRect(x, y, w, h); },
-      row(x1, x2, y, k) { g.fillStyle = col(k); g.fillRect(x1, y, x2 - x1 + 1, 1); },
-      ell(cx, cy, rx, ry, k) {
-        g.fillStyle = col(k);
-        for (let y = -ry; y <= ry; y++) {
-          const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry + 0.01))));
-          g.fillRect(cx - w, cy + y, w * 2 + 1, 1);
-        }
-      },
-    };
-  }
-  const DARK = { u: 'U', v: 'V', a: 'n', g: 'G', o: 'O', p: 'P', r: 'R', s: 'S', h: 'H', l: 'l' };
+  // 키 격자: 영역마다 팔레트 글자로 칠한 뒤, 자동 음영(뒤쪽 2px 그림자·아래 그림자·앞쪽 밝은 선·질감 점) + 외곽선
+  const DARK = { u: 'U', v: 'V', a: 'n', g: 'G', o: 'O', p: 'P', r: 'R', s: 'S', h: 'H', l: 'Z', A: 'a', y: 'v', q: 'u', b: 'o', f: 'g', L: 'L', j: 'j', n: 'n', U: 'U', V: 'V', P: 'P', R: 'R', O: 'O', G: 'G' };
   const LITE = { u: 'q', v: 'y', a: 'A', g: 'f', o: 'b', p: 'p', r: 'r', s: 's', h: 'i', l: 'l' };
-
-  // 원통형 부위(팔·다리) 공통: 왼쪽(등쪽) 어둡게, 오른쪽(앞쪽) 밝게
-  function tube(P, y1, y2, xl1, xr1, xl2, xr2, k) {
-    for (let y = y1; y <= y2; y++) {
-      const t = (y - y1) / Math.max(1, y2 - y1);
-      const xl = Math.round(xl1 + (xl2 - xl1) * t), xr = Math.round(xr1 + (xr2 - xr1) * t);
-      P.row(xl, xr, y, k);
-      P.px(xl, y, DARK[k] || k);
-      if (xr - xl > 3) P.px(xr - 1, y, LITE[k] || k);
+  const TEXTURED = new Set(['u', 'v', 'p', 'r', 'o', 'g']);
+  class KG {
+    constructor(w, h) { this.w = w; this.h = h; this.k = new Array(w * h).fill(null); }
+    get(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? null : this.k[y * this.w + x]; }
+    px(x, y, k) { if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.k[y * this.w + x] = k; }
+    row(x1, x2, y, k) { for (let x = Math.round(x1); x <= Math.round(x2); x++) this.px(x, y, k); }
+    rect(x, y, w, h, k) { for (let j = 0; j < h; j++) this.row(x, x + w - 1, y + j, k); }
+    ell(cx, cy, rx, ry, k) {
+      for (let y = -ry; y <= ry; y++) {
+        const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry + 0.3))));
+        this.row(cx - w, cx + w, cy + y, k);
+      }
+    }
+    // 위→아래로 굵기가 변하는 원통 (팔·다리)
+    tube(cx, y1, y2, w1, w2, k) {
+      for (let y = y1; y <= y2; y++) {
+        const t = (y - y1) / Math.max(1, y2 - y1), hw = (w1 + (w2 - w1) * t) / 2;
+        this.row(cx - hw, cx + hw - 1, y, k);
+      }
+    }
+    render(pal, flat) {
+      const c = canvas(this.w, this.h), g = c.getContext('2d');
+      const col = (k) => pal[k] || (k === 'Z' ? shadeHex(pal.l, 0.65) : k[0] === '#' ? k : null);
+      for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+        const k = this.get(x, y);
+        if (!k) continue;
+        let kk = k;
+        if (!flat && k.length === 1) {
+          const back = this.get(x - 1, y) !== k || this.get(x - 2, y) !== k;
+          const below = this.get(x, y + 1) === null;
+          const front = this.get(x + 1, y) !== k, top = this.get(x, y - 1) !== k;
+          if (back || below) kk = DARK[k] || k;
+          else if (front || top) kk = LITE[k] || k;
+          else if (TEXTURED.has(k) && ((x * 7 + y * 13 + x * y) % 17 === 0)) kk = DARK[k] || k;
+        }
+        const cc = col(kk) || col(k);
+        if (cc) { g.fillStyle = cc; g.fillRect(x, y, 1, 1); }
+      }
+      return outline(c);
     }
   }
 
-  // ---------- 몸통 (30x64, 목 앵커 (15,3), 골반 = 39행) ----------
+  function headCanvas(rows, pal, hood) {
+    const h = rows.length, w = rows[0].length;
+    const c = canvas(w, h), g = c.getContext('2d');
+    const put = (x, y, ch) => {
+      const cc = ch === 'k' ? OUT : pal[ch];
+      if (cc) { g.fillStyle = cc; g.fillRect(x, y, 1, 1); }
+    };
+    rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] !== '.') put(x, y, r[x]); });
+    // 눈은 2픽셀 높이로 (흰자 + 진한 눈동자), 눈꺼풀 선은 눈썹 쪽으로
+    rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === 'w' || r[x] === 'e') put(x, y + 1, r[x] === 'e' ? 'e' : 'w'); });
+    if (hood) {
+      // 후드: 얼굴 구멍(타원) 바깥을 로브 천으로 감싸고 어깨까지 늘어뜨림
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const fx = (x - 16) / 10, fy = (y - 18) / 12.5;
+        const ox = (x - 15) / 15, oy = (y - 15) / 16;
+        const inFace = fx * fx + fy * fy < 1;
+        const inHood = ox * ox + oy * oy < 1 || (y > 20 && x > 3 && x < 27);
+        if (inHood && !inFace) {
+          const edge = fx * fx + fy * fy < 1.25;
+          put(x, y, edge ? 'R' : (x < 7 || (x + y) % 9 === 0) ? 'R' : 'r');
+        }
+      }
+    }
+    return outline(c);
+  }
+
+  // ---------- 몸통 (40x78, 목 앵커 (20,3), 골반 = 45행, 타바드 자락은 아래로) ----------
   function ext(y) {
     if (y < 3) return null;
-    if (y <= 5) return [8 - (y - 3), 21 + (y - 3)];
-    if (y <= 24) return [6, 23];
-    if (y <= 33) return [7, 22];
-    if (y <= 40) return [6, 23];
-    const t = Math.floor((y - 40) / 4);
-    return [Math.max(2, 6 - t), Math.min(27, 23 + t)];
+    if (y <= 7) return [10 - (y - 3) * 1.3, 30 + (y - 3) * 1.3];
+    if (y <= 26) return [4, 36];
+    if (y <= 40) return [6, 34];
+    if (y <= 46) return [5, 35];
+    const t = Math.floor((y - 46) / 4);
+    return [Math.max(1, 5 - t), Math.min(39, 35 + t)];
   }
   function torso(style, pal) {
-    const c = canvas(30, 66), P = painter(c, pal);
-    const robe = style === 'robe';
-    for (let y = 3; y <= 60; y++) {
-      const [xl, xr] = ext(y);
+    const G = new KG(42, 78);
+    const bottom = 72;
+    for (let y = 3; y <= bottom; y++) {
+      const [xl, xr] = ext(y).map(Math.round);
       for (let x = xl; x <= xr; x++) {
-        const inL = x <= xl + 5, inR = x >= xr - 5;
-        let k = inL || inR ? 'v' : 'u';
-        if (y > 41 && !inL && !inR && y > 57) continue;
-        if (x === xl || x === xl + 1) k = DARK[k];
-        else if (x === xl + 5 || x === xr - 5) k = 'V';
-        else if (x === xr - 1 && inR) k = 'y';
-        else if (!inL && !inR && x === 15 && y > 9) k = 'U';
-        else if (!inL && !inR && y < 9 && x >= 13 && x <= 17 && (x + y) % 5 === 0) k = 'q';
-        P.px(x, y, k);
+        const inL = x <= xl + 8, inR = x >= xr - 8;
+        if (y > 47 && !inL && !inR && y > 66) continue; // 튜닉 자락은 타바드보다 짧음
+        G.px(x, y, inL || inR ? 'v' : 'u');
       }
     }
-    // V넥: 겹쳐 입은 튜닉 깃
-    for (let y = 3; y <= 9; y++) { P.px(12 + Math.floor((y - 3) / 2), y, 'U'); P.px(18 - Math.floor((y - 3) / 2), y, 'q'); }
-    // 타바드 주름
-    for (let y = 44; y <= 60; y += 5) { P.px(ext(y)[0] + 3, y, 'V'); P.px(ext(y)[1] - 3, y, 'V'); }
-
-    if (style === 'cwA') { // 건메탈 흉갑 (요크 형태) + 높은 깃
-      for (let y = 1; y <= 19; y++) for (let x = 5; x <= 24; x++) {
-        const e = ext(Math.max(3, y));
-        const bottom = 19 - Math.floor(Math.abs(x - 16) / 2.5);
-        if (y < 3 && (x < 11 || x > 20)) continue;
-        if (y >= 3 && (x < e[0] || x > e[1])) continue;
-        if (y > bottom) continue;
-        let k = 'a';
-        if (y === bottom || x <= e[0] + 1 || y <= 1) k = 'n';
-        else if ((y <= 6 && x >= 16 && x <= 22) || x === e[1] - 1) k = 'A';
-        else if (x === 15 && y > 4) k = 'n';
-        else if ((x * 7 + y * 13) % 17 === 0) k = 'n'; // 긁힌 자국
-        P.px(x, y, k);
+    // V넥 깃
+    for (let y = 3; y <= 13; y++) { G.px(15 + Math.floor((y - 3) / 2), y, 'U'); G.px(25 - Math.floor((y - 3) / 2), y, 'U'); }
+    for (let y = 14; y <= 46; y++) G.px(20, y, 'U');
+    if (style === 'cwA') { // 건메탈 흉갑 (요크) + 깃
+      for (let y = 1; y <= 24; y++) {
+        const e = ext(Math.max(3, y)).map(Math.round);
+        for (let x = 4; x <= 36; x++) {
+          const bot = 24 - Math.floor(Math.abs(x - 21) / 2.2);
+          if (y > bot) continue;
+          if (y < 3 && (x < 14 || x > 27)) continue;
+          if (y >= 3 && (x < e[0] || x > e[1])) continue;
+          G.px(x, y, (x === 20 || y === bot) && y > 4 ? 'n' : 'a');
+        }
       }
+      for (const [x, y] of [[9, 9], [30, 12], [14, 17], [26, 7]]) G.px(x, y, 'n'); // 긁힌 자국
     }
-    if (style === 'cwO') { // 흰 클론 흉갑 + 복부 장갑
-      for (let y = 1; y <= 21; y++) for (let x = 5; x <= 24; x++) {
-        const e = ext(Math.max(3, y));
-        if (y < 3 && (x < 11 || x > 20)) continue;
-        if (y >= 3 && (x < e[0] + 1 || x > e[1] - 1)) continue;
-        const bottom = 21 - Math.floor(Math.abs(x - 15) / 3);
-        if (y > bottom) continue;
-        let k = 'a';
-        if (y === bottom || x === e[0] + 1 || y <= 1) k = 'n';
-        else if (y === 11 || (x === 15 && y > 4)) k = 'n';
-        else if (y <= 5 && x >= 16) k = 'A';
-        P.px(x, y, k);
+    if (style === 'cwO') { // 흰 클론 흉갑 + 복부판
+      for (let y = 1; y <= 27; y++) {
+        const e = ext(Math.max(3, y)).map(Math.round);
+        for (let x = 4; x <= 36; x++) {
+          const bot = 27 - Math.floor(Math.abs(x - 20) / 3);
+          if (y > bot) continue;
+          if (y < 3 && (x < 14 || x > 27)) continue;
+          if (y >= 3 && (x < e[0] + 1 || x > e[1] - 1)) continue;
+          G.px(x, y, (y === 14 || x === 20) && y > 4 ? 'n' : 'a');
+        }
       }
-      for (let y = 23; y <= 33; y++) for (let x = 10; x <= 20; x++) {
-        let k = 'a';
-        if (x === 10 || y === 33 || y === 27 || y === 30) k = 'n';
-        else if (x === 19) k = 'A';
-        P.px(x, y, k);
-      }
+      for (let y = 29; y <= 40; y++) for (let x = 13; x <= 27; x++) G.px(x, y, y === 33 || y === 37 || y === 40 ? 'n' : 'a');
     }
     // 벨트 + 버클 + 파우치
-    for (let y = 35; y <= 38; y++) { const [xl, xr] = ext(y); P.row(xl, xr, y, y === 38 ? shadeHex(pal.l, 0.7) : 'l'); }
-    P.rect(17, 35, 3, 3, 'L'); P.px(18, 36, 'l');
-    P.rect(8, 35, 3, 5, shadeHex(pal.l, 0.8)); P.px(9, 36, 'L');
-    P.rect(21, 35, 3, 5, shadeHex(pal.l, 0.8));
-    if (robe) {
-      for (let y = 3; y <= 62; y++) {
-        const [xl0, xr0] = ext(Math.min(y, 60));
-        const grow = y > 40 ? 1 : 0;
-        P.row(xl0 - 2 - grow, xl0 + 2, y, 'r'); P.px(xl0 - 2 - grow, y, 'R'); P.px(xl0 + 2, y, 'R');
-        P.row(xr0 - 2, xr0 + 2 + grow, y, 'r'); P.px(xr0 - 2, y, 'R');
+    for (let y = 41; y <= 45; y++) { const [xl, xr] = ext(y).map(Math.round); G.row(xl, xr, y, 'l'); }
+    G.rect(23, 42, 4, 3, 'L'); G.rect(9, 42, 4, 6, 'Z'); G.rect(29, 42, 4, 6, 'Z');
+    if (style === 'robe') {
+      for (let y = 3; y <= 75; y++) {
+        const [xl, xr] = ext(Math.min(y, bottom)).map(Math.round);
+        const g2 = y > 46 ? 1 : 0;
+        G.row(xl - 3 - g2, xl + 3, y, 'r'); G.row(xr - 3, xr + 3 + g2, y, 'r');
       }
     }
-    return { c: outline(c), ax: 15, ay: 3 };
+    return { c: G.render(pal), ax: 20, ay: 3 };
   }
 
-  // ---------- 위팔 (14x24, 어깨 앵커 (7,3), 팔꿈치 = 20행) ----------
+  // ---------- 위팔 (20x28, 어깨 앵커 (10,3), 팔꿈치 = 23행) ----------
   function upperArm(style, pal, front) {
-    const c = canvas(16, 24), P = painter(c, pal);
+    const G = new KG(22, 28);
     const k = style === 'robe' ? 'r' : 'u';
-    if (style === 'robe' || style === 'jedi') tube(P, 2, 21, 3, 11, 4, 11, k);
-    else tube(P, 2, 21, 4, 11, 5, 10, k);
-    P.row(5, 9, 1, k);
-    if (style === 'pauldron' && front || style === 'armorO') {
-      if (front) { // 견갑 + 붉은 제다이 문장
-        P.ell(8, 5, 6, 4, 'a');
-        P.row(4, 12, 9, 'n'); P.row(6, 11, 2, 'A'); P.px(12, 4, 'A'); P.px(13, 5, 'A');
-        P.px(8, 4, 'j'); P.row(7, 9, 5, 'j'); P.px(8, 6, 'j'); P.px(7, 3, 'j'); P.px(9, 3, 'j');
-      }
-      if (style === 'armorO') { // 위팔 장갑판
-        for (let y = 11; y <= 18; y++) { P.row(4, 11, y, 'a'); P.px(4, y, 'n'); P.px(10, y, 'A'); }
-        P.row(4, 11, 18, 'n');
-      }
+    if (style === 'robe' || style === 'jedi') G.tube(11, 2, 24, 13, 14, k);
+    else G.tube(11, 2, 24, 12, 11, k);
+    G.ell(11, 4, 6, 3, k);
+    if ((style === 'pauldron' || style === 'armorO') && front) { // 견갑 + 붉은 제다이 문장
+      G.ell(11, 6, 9, 6, 'a');
+      G.row(4, 18, 12, 'n');
+      G.px(11, 4, 'j'); G.row(9, 13, 6, 'j'); G.row(10, 12, 5, 'j'); G.px(11, 7, 'j'); G.px(11, 8, 'j'); G.px(8, 7, 'j'); G.px(14, 7, 'j');
     }
-    return { c: outline(c), ax: 8, ay: 3 };
+    if (style === 'armorO') { for (let y = 14; y <= 22; y++) G.row(5, 16, y, y === 22 ? 'n' : 'a'); }
+    return { c: G.render(pal), ax: 11, ay: 3 };
   }
 
-  // ---------- 아래팔 + 손 (18x30, 팔꿈치 앵커 (8,3), 손목 = 20행) ----------
+  // ---------- 아래팔 + 주먹 (22x34, 팔꿈치 앵커 (11,3), 손목 = 23행) ----------
   function foreArm(style, pal, gloved) {
-    const c = canvas(18, 30), P = painter(c, pal);
-    if (style === 'gauntlet') { // 아나킨: 팔꿈치까지 오는 갈색 가죽 건틀릿
-      tube(P, 2, 8, 2, 13, 4, 12, 'g');
-      P.row(3, 12, 2, 'f');
-      tube(P, 8, 20, 4, 12, 5, 11, 'g');
-      for (const y of [11, 15]) { P.row(5, 11, y, 'G'); P.row(5, 11, y - 1, 'f'); P.px(10, y, 'L'); }
-      P.row(4, 12, 8, 'G');
-    } else if (style === 'armorO') { // 오비완: 검은 언더슈트 + 흰 팔뚝 장갑
-      tube(P, 2, 20, 5, 11, 5, 11, 'u');
-      for (let y = 6; y <= 17; y++) { P.row(4, 12, y, 'a'); P.px(4, y, 'n'); P.px(11, y, 'A'); }
-      P.row(4, 12, 17, 'n'); P.row(4, 12, 6, 'n');
+    const G = new KG(24, 34);
+    if (style === 'gauntlet') { // 아나킨: 긴 갈색 가죽 건틀릿
+      G.tube(12, 2, 9, 15, 12, 'g');
+      G.tube(12, 9, 23, 12, 10, 'g');
+      for (const y of [12, 17]) { G.row(7, 16, y, 'G'); G.px(15, y, 'L'); }
+      G.row(5, 18, 9, 'G');
+    } else if (style === 'armorO') { // 오비완: 검은 언더슈트 + 흰 팔뚝판
+      G.tube(12, 2, 23, 11, 10, 'u');
+      for (let y = 7; y <= 20; y++) G.row(6, 17, y, y === 7 || y === 20 ? 'n' : 'a');
     } else { // 제다이 종 모양 소매
       const k = style === 'robe' ? 'r' : 'u';
-      tube(P, 2, 17, 5, 11, 2, 14, k);
-      P.row(3, 13, 17, DARK[k]);
-      tube(P, 17, 20, 6, 10, 6, 10, gloved ? 'g' : 's');
+      G.tube(12, 2, 20, 12, 17, k);
+      G.row(4, 20, 20, DARK[k]);
+      G.tube(12, 20, 23, 8, 8, gloved ? 'g' : 's');
     }
-    // 주먹 (광선검을 쥔 손)
     const hk = style === 'gauntlet' || style === 'armorO' || gloved ? 'g' : 's';
-    P.ell(9, 23, 4, 3, hk);
-    P.row(6, 12, 21, LITE[hk] || hk); P.px(13, 23, LITE[hk] || hk); P.px(5, 24, DARK[hk] || hk);
-    return { c: outline(c), ax: 8, ay: 3 };
+    G.ell(12, 27, 6, 5, hk);
+    G.row(8, 15, 24, hk); G.px(17, 27, hk);
+    return { c: G.render(pal), ax: 12, ay: 3 };
   }
 
-  // ---------- 허벅지 (16x30, 엉덩이 앵커 (8,3), 무릎 = 25행) ----------
+  // ---------- 허벅지 (22x34, 엉덩이 앵커 (11,3), 무릎 = 29행) ----------
   function thigh(pal) {
-    const c = canvas(16, 30), P = painter(c, pal);
-    tube(P, 1, 27, 3, 12, 5, 11, 'p');
-    return { c: outline(c), ax: 8, ay: 3 };
+    const G = new KG(22, 34);
+    G.tube(11, 1, 31, 16, 13, 'p');
+    return { c: G.render(pal), ax: 11, ay: 3 };
   }
 
-  // ---------- 정강이 + 발 (24x36, 무릎 앵커 (8,3), 발목 = 26행) ----------
+  // ---------- 정강이 + 발 (30x40, 무릎 앵커 (11,3), 발목 = 30행) ----------
   function shin(style, pal) {
-    const c = canvas(24, 36), P = painter(c, pal);
+    const G = new KG(32, 40);
     if (style === 'greave') { // 오비완: 흰 무릎·정강이 장갑 + 회색 부츠
-      tube(P, 2, 26, 4, 12, 5, 12, 'u');
-      P.ell(8, 4, 5, 4, 'a'); P.row(5, 11, 1, 'A'); P.row(4, 12, 8, 'n');
-      for (let y = 9; y <= 23; y++) { P.row(4, 12, y, 'a'); P.px(4, y, 'n'); P.px(11, y, 'A'); }
-      P.row(4, 12, 23, 'n');
-      foot(P, 'o');
+      G.tube(11, 2, 30, 13, 13, 'u');
+      G.ell(11, 5, 7, 5, 'a');
+      for (let y = 10; y <= 27; y++) G.row(5, 17, y, y === 27 ? 'n' : 'a');
+      G.row(5, 17, 10, 'n');
     } else {
-      tube(P, 2, 7, 3, 13, 4, 12, 'o'); // 부츠 윗단
-      P.row(4, 12, 2, 'b'); P.row(3, 13, 7, 'O');
-      tube(P, 7, 27, 4, 12, 5, 12, 'o');
-      if (style === 'strapBoot') {
-        for (const y of [11, 17, 22]) { P.row(4, 12, y, 'O'); P.row(4, 12, y + 1, 'b'); P.px(11, y, 'L'); }
-      }
-      foot(P, 'o');
+      G.tube(11, 2, 8, 16, 15, 'o'); // 부츠 윗단
+      G.row(3, 19, 8, 'O');
+      G.tube(11, 8, 31, 14, 13, 'o');
+      if (style === 'strapBoot') for (const y of [13, 20, 26]) { G.row(4, 18, y, 'O'); G.px(16, y, 'L'); }
     }
-    return { c: outline(c), ax: 8, ay: 3 };
-  }
-  function foot(P, k) {
-    P.row(4, 13, 26, k); P.row(4, 15, 27, k); P.row(3, 17, 28, k); P.row(3, 18, 29, k); P.row(3, 18, 30, k);
-    P.row(3, 18, 31, 'O'); P.rect(3, 29, 4, 3, 'O'); P.row(12, 17, 28, LITE[k] || k);
+    // 발
+    G.row(5, 18, 30, 'o'); G.row(5, 20, 31, 'o'); G.row(4, 23, 32, 'o'); G.row(4, 25, 33, 'o'); G.row(4, 26, 34, 'o'); G.row(4, 26, 35, 'o');
+    G.row(4, 26, 36, 'O');
+    return { c: G.render(pal), ax: 11, ay: 3 };
   }
 
   // ---------- 캐릭터 정의 ----------
@@ -402,9 +360,9 @@
       id: 'anakin', name: '아나킨 스카이워커', short: 'ANAKIN', blade: '#3b8cff', hilt: 'anakin',
       winQuote: '"이제는 내가 마스터다."',
       skins: [
-        { name: '클론 전쟁', sub: '기본 · 건메탈 갑옷, 남색 타바드', pal: PAL.anakinCW, head: 'anakin', scar: true, torso: 'cwA', uarm: 'pauldron', farm: 'gauntlet', shin: 'strapBoot' },
-        { name: '제다이 복장', sub: '시스의 복수', pal: PAL.anakinROTS, head: 'anakin', scar: true, torso: 'jedi', uarm: 'jedi', farm: 'jedi', glove: 'front', shin: 'boot' },
-        { name: '제다이 후드', sub: '시스의 복수 · 로브와 후드', pal: PAL.anakinROTS, head: 'hood', torso: 'robe', uarm: 'robe', farm: 'robe', glove: 'front', shin: 'boot' },
+        { name: '클론 전쟁', sub: '기본 · 건메탈 갑옷, 남색 타바드', pal: PAL.anakinCW, head: 'anakin', torso: 'cwA', uarm: 'pauldron', farm: 'gauntlet', shin: 'strapBoot' },
+        { name: '제다이 복장', sub: '시스의 복수', pal: PAL.anakinROTS, head: 'anakin', torso: 'jedi', uarm: 'jedi', farm: 'jedi', glove: 'front', shin: 'boot' },
+        { name: '제다이 후드', sub: '시스의 복수 · 로브와 후드', pal: PAL.anakinROTS, head: 'anakin', hood: true, torso: 'robe', uarm: 'robe', farm: 'robe', glove: 'front', shin: 'boot' },
       ],
     },
     obiwan: {
@@ -413,7 +371,7 @@
       skins: [
         { name: '클론 전쟁', sub: '기본 · 흰 클론 아머, 크림 타바드', pal: PAL.obiwanCW, head: 'obiwan', torso: 'cwO', uarm: 'armorO', farm: 'armorO', shin: 'greave' },
         { name: '제다이 복장', sub: '시스의 복수', pal: PAL.obiwanROTS, head: 'obiwan', torso: 'jedi', uarm: 'jedi', farm: 'jedi', shin: 'boot' },
-        { name: '제다이 후드', sub: '시스의 복수 · 로브와 후드', pal: PAL.obiwanROTS, head: 'hood', beard: true, torso: 'robe', uarm: 'robe', farm: 'robe', shin: 'boot' },
+        { name: '제다이 후드', sub: '시스의 복수 · 로브와 후드', pal: PAL.obiwanROTS, head: 'obiwan', hood: true, torso: 'robe', uarm: 'robe', farm: 'robe', shin: 'boot' },
       ],
     },
   };
@@ -422,12 +380,9 @@
   function parts(ch, si) {
     const key = ch + si;
     if (cache[key]) return cache[key];
-    const s = CHARACTERS[ch].skins[si], pal = s.pal, dk = darkPal(pal, 0.68);
-    const headC = gridCanvas(HEADS[s.head], pal);
-    const hg = headC.getContext('2d');
-    if (s.beard) hg.drawImage(gridCanvas(HOOD_BEARD, PAL.obiwanROTS), 0, 0);
+    const s = CHARACTERS[ch].skins[si], pal = s.pal, dk = darkPal(pal, 0.7);
     const P = {
-      head: { c: headC, ax: 13, ay: 16 },
+      head: { c: headCanvas(HEADS[s.head], pal, s.hood), ax: 15, ay: 17 },
       torso: torso(s.torso, pal),
       uarmF: upperArm(s.uarm, pal, true), uarmB: upperArm(s.uarm, dk, false),
       farmF: foreArm(s.farm, pal, s.glove === 'front'), farmB: foreArm(s.farm, dk, false),

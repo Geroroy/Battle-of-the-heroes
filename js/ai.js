@@ -12,6 +12,7 @@ class AI {
     this.ang = null;
     this.target = null;
     this.blockT = 0;
+    this.phase = Math.random() * Math.PI * 2;
   }
 
   // 조준 각도를 난이도별 속도로만 돌림 (쉬움일수록 느리고 막기 쉬운 베기)
@@ -35,7 +36,7 @@ class AI {
     const sh = { x: me.neckP.x, y: me.neckP.y + 12 };
 
     // 이동: 사거리(약 150) 유지, 가장자리 피하기
-    const want = this.state === 'strike' || this.state === 'wind' ? 120 : 200;
+    const want = this.state === 'strike' || this.state === 'wind' ? 140 : 225;
     if (!opp.dead) {
       if (dist > want + 25) out.mx = f;
       else if (dist < want - 45) out.mx = -f * 0.8;
@@ -64,7 +65,7 @@ class AI {
     this.t--;
     switch (this.state) {
       case 'guard':
-        if (this.t <= 0 && dist < 240) {
+        if (this.t <= 0 && dist < 270) {
           // 목표 부위 선택: 머리/목, 몸통, 다리, 팔
           const r = Math.random();
           const head = opp.headP, neck = opp.neckP;
@@ -93,7 +94,7 @@ class AI {
       }
     }
     // 대기 중: 칼을 세워 방어 자세 (가끔 칼끝으로 견제)
-    if (Math.sin(me.time * 0.03 + me.side) > 0.6) aimAt(opp.neckP.x, opp.neckP.y - 80);
+    if (Math.sin(me.time * 0.03 + this.phase) > 0.6) aimAt(opp.neckP.x, opp.neckP.y - 80);
     return out;
   }
 }

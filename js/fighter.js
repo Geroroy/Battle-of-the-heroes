@@ -12,16 +12,16 @@
   const I = Object.fromEntries(N.map((n, i) => [n, i]));
   // 뼈: i = 부모(몸 쪽) 관절, j = 자식. 잘리면 i 를 복제해 자식 쪽을 떼어낸다
   const BONES = [
-    { name: 'neck', i: 'neck', j: 'head', len: L.neck, th: 9 },
-    { name: 'torso', i: 'pelvis', j: 'neck', len: L.torso, th: 14 },
-    { name: 'uarmB', i: 'neck', j: 'elbowB', len: L.uarm, th: 8 },
-    { name: 'farmB', i: 'elbowB', j: 'handB', len: L.farm, th: 8 },
-    { name: 'uarmF', i: 'neck', j: 'elbowF', len: L.uarm, th: 8 },
-    { name: 'farmF', i: 'elbowF', j: 'handF', len: L.farm, th: 8 },
-    { name: 'thighB', i: 'pelvis', j: 'kneeB', len: L.thigh, th: 10 },
-    { name: 'shinB', i: 'kneeB', j: 'footB', len: L.shin, th: 9 },
-    { name: 'thighF', i: 'pelvis', j: 'kneeF', len: L.thigh, th: 10 },
-    { name: 'shinF', i: 'kneeF', j: 'footF', len: L.shin, th: 9 },
+    { name: 'neck', i: 'neck', j: 'head', len: L.neck, th: 11 },
+    { name: 'torso', i: 'pelvis', j: 'neck', len: L.torso, th: 20 },
+    { name: 'uarmB', i: 'neck', j: 'elbowB', len: L.uarm, th: 11 },
+    { name: 'farmB', i: 'elbowB', j: 'handB', len: L.farm, th: 10 },
+    { name: 'uarmF', i: 'neck', j: 'elbowF', len: L.uarm, th: 11 },
+    { name: 'farmF', i: 'elbowF', j: 'handF', len: L.farm, th: 10 },
+    { name: 'thighB', i: 'pelvis', j: 'kneeB', len: L.thigh, th: 14 },
+    { name: 'shinB', i: 'kneeB', j: 'footB', len: L.shin, th: 12 },
+    { name: 'thighF', i: 'pelvis', j: 'kneeF', len: L.thigh, th: 14 },
+    { name: 'shinF', i: 'kneeF', j: 'footF', len: L.shin, th: 12 },
   ];
   const PART_NAME = {
     neck: '목', torso: '몸통', uarmB: '왼팔', farmB: '왼손', uarmF: '오른팔', farmF: '오른손',
@@ -205,7 +205,7 @@
       if (neckOK) this.pullRel(P[I.head], neck.x + f * 3, neck.y - L.neck, 0.35, 0.2, [neck]);
       // 점프
       if (onGround && legs > 0 && my < -0.6 && this.jumpCd <= 0) {
-        const pow = legs === 2 ? 11 : 7;
+        const pow = legs === 2 ? 12 : 7;
         for (const p of P) { p.py += pow; p.px -= mx * 3; }
         this.jumpCd = 45;
         game.effects.dust(pel.x, gy, 8);
@@ -249,11 +249,11 @@
         this.aim += U.clamp(diff, -AIM_RATE, AIM_RATE);
         const d = { x: Math.cos(this.aim), y: Math.sin(this.aim) };
         const tdx = pel.x - neck.x, tdy = pel.y - neck.y, tl = Math.hypot(tdx, tdy) || 1;
-        const S = { x: neck.x + tdx / tl * 12, y: neck.y + tdy / tl * 12 };
+        const S = { x: neck.x + tdx / tl * 16, y: neck.y + tdy / tl * 16 };
         // 손은 가슴 앞에서 스틱 방향으로 뻗고, 칼날은 조준 방향을 향함
         const mag = inp.aiming ? Math.min(1, Math.hypot(inp.ax, inp.ay)) : 0.4;
-        const reach = 14 + mag * 22;
-        const hx = S.x + this.facing * 14 + d.x * reach, hy = S.y + 16 + d.y * reach * 0.8;
+        const reach = 16 + mag * 26;
+        const hx = S.x + this.facing * 18 + d.x * reach, hy = S.y + 22 + d.y * reach * 0.8;
         this.pullRel(P[I.hilt], hx, hy, 0.35, 0.22, [neck, pel]);
         this.pullRel(P[I.tip], hx + d.x * SABER_L, hy + d.y * SABER_L, 0.35, 0.22, [neck, pel]);
         for (const k of ['B', 'F']) {
@@ -284,7 +284,7 @@
       this.trail = [...trail, { ...this.blade }];
     }
 
-    bladeActive() { return this.bladeLen > 30; }
+    bladeActive() { return this.bladeOn && this.bladeLen > 30; }
     tipSpeed() {
       if (!this.prevBlade) return 0;
       return Math.hypot(this.blade.x2 - this.prevBlade.x2, this.blade.y2 - this.prevBlade.y2);
@@ -364,8 +364,8 @@
       // 어깨 위치: 몸통 방향으로 목에서 조금 아래
       const neck = P[I.neck], tor = B.torso, pe = P[tor.i];
       const tl = Math.hypot(pe.x - neck.x, pe.y - neck.y) || 1;
-      const sh = { x: neck.x + (pe.x - neck.x) / tl * 10, y: neck.y + (pe.y - neck.y) / tl * 10 };
-      const shB = { x: sh.x - f * 4, y: sh.y }, shF = { x: sh.x + f * 3, y: sh.y + 1 };
+      const sh = { x: neck.x + (pe.x - neck.x) / tl * 14, y: neck.y + (pe.y - neck.y) / tl * 14 };
+      const shB = { x: sh.x - f * 14, y: sh.y + 2 }, shF = { x: sh.x + f * 12, y: sh.y + 2 };
 
       seg('uarmB', S.uarmB, B.uarmB.cut ? null : shB);
       seg('farmB', S.farmB);

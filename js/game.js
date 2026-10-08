@@ -78,7 +78,7 @@ class Game {
       // 2P: 몸은 자동으로 상대와 적당한 거리를 유지
       const me = this.f[side], op = this.opponentOf(me);
       const d = op.pelvis.x - me.pelvis.x, ad = Math.abs(d), s = Math.sign(d) || 1;
-      inp.mx = ad > 175 ? s : ad < 105 ? -s * 0.7 : 0;
+      inp.mx = ad > 200 ? s : ad < 125 ? -s * 0.7 : 0;
       const { PLAT } = CFG;
       if ((me.pelvis.x < PLAT.left + 60 && inp.mx < 0) || (me.pelvis.x > PLAT.right - 60 && inp.mx > 0)) inp.mx = 0;
     }
@@ -162,6 +162,7 @@ class Game {
       const rel = Math.hypot(v.x - vb.x, v.y - vb.y);
       const need = Fighter.CUT_V * (c.name === 'torso' ? 1.9 : c.name === 'neck' ? 1.35 : 1);
       if (rel > need) {
+        const relv = rel;
         // 몸통: 첫 타격은 지져진 상처만, 두 번째(또는 아주 빠른 일격)에 두 동강
         if (c.name === 'torso' && tgt.wounds < 1 && rel < need * 1.6) {
           if (tgt.woundCd <= 0) {
@@ -173,7 +174,7 @@ class Game {
           }
           continue;
         }
-        hits.push({ name: c.name, x: hit.x, y: hit.y, v });
+        hits.push({ name: c.name, x: hit.x, y: hit.y, v, rel: relv });
       }
       else {
         // 느린 접촉: 지지며 밀어냄
@@ -208,7 +209,7 @@ class Game {
     const I = Fighter.I;
     for (const ia of [I.pelvis, I.neck]) for (const ib of [I.pelvis, I.neck]) {
       const p = a.p[ia], q = b.p[ib];
-      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy), min = 34;
+      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy), min = 46;
       if (d < min && d > 0.01) {
         const push = (min - d) / 2 / d;
         p.x -= dx * push; q.x += dx * push;
@@ -231,9 +232,11 @@ class Game {
     if (this.state === 'fight' || this.state === 'roundEnd') {
       // 칼끼리 막혔으면 이번 프레임은 베기 없음 (막기가 의미 있도록)
       if (!this.clash(a, b)) {
+        // 같은 프레임에 둘 다 닿으면 더 빠른 칼이 먼저. 그 일격에 죽은 쪽은 반격하지 못한다
         const ha = this.cuts(a, b), hb = this.cuts(b, a);
-        this.applyCuts(a, b, ha);
-        this.applyCuts(b, a, hb);
+        const top = (h) => h.reduce((m, x) => Math.max(m, x.rel), 0);
+        const order = top(ha) >= top(hb) ? [[a, b, ha], [b, a, hb]] : [[b, a, hb], [a, b, ha]];
+        for (const [att, tgt, hits] of order) if (!att.dead) this.applyCuts(att, tgt, hits);
       }
     }
     for (const f of this.f) if (!f.dead && f.disarmT > 75) f.kill(this, 'disarm');

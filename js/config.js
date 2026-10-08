@@ -7,7 +7,7 @@ window.CFG = {
   G: 0.5,
   WIN_SCORE: 3,
   // 래그돌 뼈 길이 (논리 좌표, 스프라이트 1픽셀 = 2유닛)
-  BONE: { neck: 26, torso: 72, uarm: 34, farm: 34, thigh: 44, shin: 46, hilt: 22, blade: 112 },
+  BONE: { neck: 30, torso: 84, uarm: 40, farm: 40, thigh: 52, shin: 54, hilt: 24, blade: 124 },
 };
 
 window.U = {
