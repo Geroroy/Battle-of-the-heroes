@@ -1,0 +1,12 @@
+{
+  "name": "Saber Duel - 광선검 결투",
+  "short_name": "Saber Duel",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#120403",
+  "theme_color": "#120403",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
