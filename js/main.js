@@ -119,41 +119,64 @@
     show('#screen-result');
   };
 
-  // ----- 입력 -----
-  game.canvas.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    Sfx.init();
-    if (!game.running) return;
-    const side = mode === '1p' ? 0 : e.clientX < window.innerWidth / 2 ? 0 : 1;
-    game.input(side);
-  });
+  // ----- 입력 (가상 조이스틱 / 키보드 / 마우스) -----
+  Input.attach(game.canvas, () => game.running && !game.paused && game.state !== 'matchEnd');
+  game.canvas.addEventListener('pointerdown', () => Sfx.init());
   window.addEventListener('keydown', (e) => {
-    if (e.repeat || !game.running) return;
-    if (e.code === 'Escape') { if (!game.paused) $('#btn-pause').click(); return; }
-    const p1 = ['KeyA', 'KeyF', 'Space'], p2 = ['KeyL', 'KeyJ', 'Enter'];
-    if (mode === '1p') { if (p1.includes(e.code) || p2.includes(e.code)) { e.preventDefault(); game.input(0); } }
-    else if (p1.includes(e.code)) { e.preventDefault(); game.input(0); }
-    else if (p2.includes(e.code)) { e.preventDefault(); game.input(1); }
+    if (!game.running) return;
+    if (e.code === 'Escape' && !e.repeat) { if (!game.paused) $('#btn-pause').click(); return; }
+    if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+    Sfx.init();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && game.running && !game.paused && game.state !== 'matchEnd') $('#btn-pause').click();
   });
+
+  // ----- 선택 화면 미리보기: 실제 래그돌을 제자리에서 움직여 보여줌 -----
+  const stubGame = {
+    opponentOf: () => null, onLava() {},
+    effects: { dust() {}, ember() {}, smoke() {}, spark() {} },
+  };
+  const pv = [0, 1].map(() => {
+    const c = document.createElement('canvas');
+    c.width = 130; c.height = 170;
+    return { c, g: c.getContext('2d'), f: null, key: '' };
+  });
+  function drawPreview(side, el) {
+    const v = pv[side], p = sel.p[side], key = p.char + p.skin;
+    if (v.key !== key) {
+      v.key = key;
+      v.f = new Fighter(side, p.char, p.skin);
+      v.f.bladeOn = true;
+      v.t = 0;
+    }
+    const f = v.f;
+    v.t++;
+    // 가끔 시범 베기
+    const ph = (v.t + side * 90) % 200;
+    const swing = ph > 150 && ph < 175;
+    const a = ph <= 160 ? -Math.PI / 2 - f.facing * 0.8 : f.facing > 0 ? 0.7 : Math.PI - 0.7;
+    f.update(stubGame, { mx: 0, my: 0, ax: Math.cos(a), ay: Math.sin(a), aiming: ph > 140 && ph < 180 || swing });
+    const g = v.g, x0 = f.bodyX;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, 130, 170);
+    g.imageSmoothingEnabled = false;
+    g.setTransform(0.5, 0, 0, 0.5, Math.round((130 - x0) / 2), Math.round((330 - CFG.PLAT.top) / 2));
+    g.fillStyle = '#140d0b'; g.fillRect(x0 - 70, CFG.PLAT.top, 140, 8);
+    g.fillStyle = '#5a535b'; g.fillRect(x0 - 70, CFG.PLAT.top, 140, 2);
+    f.draw(g);
+    const c = $('.preview', el), ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(v.c, 0, 0, c.width, c.height);
+  }
 
   // ----- 메인 루프 -----
   let last = performance.now();
   function loop(now) {
     const dt = now - last; last = now;
     game.tick(dt);
-    if (!$('#screen-select').classList.contains('hidden')) {
-      picks.forEach((el, side) => {
-        const c = $('.preview', el), ctx = c.getContext('2d');
-        const p = sel.p[side];
-        ctx.save();
-        if (side === 1) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
-        Skins.drawPreview(ctx, p.char, p.skin, now / 1000 + side, c.width, c.height);
-        ctx.restore();
-      });
-    }
+    if (!$('#screen-select').classList.contains('hidden')) picks.forEach((el, side) => drawPreview(side, el));
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

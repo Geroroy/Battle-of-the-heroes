@@ -1,28 +1,32 @@
-// 결투자: 원버튼 물리 (탭 = 상대를 향해 점프 + 회전 + 베기, 공중 1회 추가 점프)
+// 액티브 래그돌 결투자 (Bloody Bastards 방식)
+// - 몸은 Verlet 입자 + 거리 제약(뼈)으로 이루어지고, "근육"이 목표 자세 쪽으로 당겨 서 있게 한다
+// - 왼쪽 스틱: 이동(좌우) / 점프(위) / 웅크리기(아래), 오른쪽 스틱: 광선검을 든 팔 조준
+// - 광선검이 충분히 빠르게 뼈를 가로지르면 그 뼈가 잘린다 (팔·다리·목·몸통)
 (function () {
-  const { PLAT, LAVA_Y, G } = CFG;
-
-  const JUMP_VY = -12, JUMP_VX = 4.6, JUMP_AV = 0.17;
-  const AIR_VY = -9.5, AIR_VX = 2.6, AIR_AV = 0.21;
-  const SWING_FRAMES = 15;
-  const BLADE_LEN = 66, HILT_HALF = 7;
-  const FOOT_Y = 39;
-
-  // 피격 판정 원 (로컬 좌표)
-  const HIT_CIRCLES = [
-    { part: 'head', x: 2, y: -43, r: 14 },
-    { part: 'chest', x: 0, y: -17, r: 13 },
-    { part: 'pelvis', x: 0, y: 5, r: 12 },
-    { part: 'legs', x: 0, y: 26, r: 10 },
+  const { PLAT, LAVA_Y, G, BONE: L } = CFG;
+  const SABER_L = L.hilt + L.blade;
+  const STAND_H = (L.thigh + L.shin) * 0.96;
+  const CUT_V = 7.5;            // 이 속도(유닛/프레임) 이상으로 휘두른 검만 절단
+  const AIM_RATE = 0.3;         // 조준 각도 최대 회전 속도 (rad/프레임)
+  const N = ['head', 'neck', 'pelvis', 'elbowB', 'handB', 'elbowF', 'handF', 'kneeB', 'footB', 'kneeF', 'footF', 'hilt', 'tip'];
+  const I = Object.fromEntries(N.map((n, i) => [n, i]));
+  // 뼈: i = 부모(몸 쪽) 관절, j = 자식. 잘리면 i 를 복제해 자식 쪽을 떼어낸다
+  const BONES = [
+    { name: 'neck', i: 'neck', j: 'head', len: L.neck, th: 9 },
+    { name: 'torso', i: 'pelvis', j: 'neck', len: L.torso, th: 14 },
+    { name: 'uarmB', i: 'neck', j: 'elbowB', len: L.uarm, th: 8 },
+    { name: 'farmB', i: 'elbowB', j: 'handB', len: L.farm, th: 8 },
+    { name: 'uarmF', i: 'neck', j: 'elbowF', len: L.uarm, th: 8 },
+    { name: 'farmF', i: 'elbowF', j: 'handF', len: L.farm, th: 8 },
+    { name: 'thighB', i: 'pelvis', j: 'kneeB', len: L.thigh, th: 10 },
+    { name: 'shinB', i: 'kneeB', j: 'footB', len: L.shin, th: 9 },
+    { name: 'thighF', i: 'pelvis', j: 'kneeF', len: L.thigh, th: 10 },
+    { name: 'shinF', i: 'kneeF', j: 'footF', len: L.shin, th: 9 },
   ];
-  // 바닥 접촉 원
-  const GROUND_PTS = [
-    { x: 2, y: -43, r: 14 },
-    { x: 0, y: -17, r: 13 },
-    { x: 0, y: 5, r: 12 },
-    { x: -5, y: 34, r: 5 },
-    { x: 7, y: 34, r: 5 },
-  ];
+  const PART_NAME = {
+    neck: '목', torso: '몸통', uarmB: '왼팔', farmB: '왼손', uarmF: '오른팔', farmF: '오른손',
+    thighB: '왼다리', shinB: '왼발', thighF: '오른다리', shinF: '오른발',
+  };
 
   class Fighter {
     constructor(side, charId, skin) {
@@ -30,301 +34,385 @@
       this.char = charId;
       this.skin = skin;
       this.data = Skins.CHARACTERS[charId];
-      this.spr = Skins.newSprite();
-      this.reset(side === 0 ? 300 : 660, side === 0 ? 1 : -1);
+      this.sprites = Skins.parts(charId, skin);
+      this.reset(side === 0 ? 330 : 630, side === 0 ? 1 : -1);
     }
 
     reset(x, facing) {
+      const f = facing, gy = PLAT.top, py = gy - STAND_H;
+      const ny = py - L.torso;
+      const S = { x, y: ny + 10 };
+      const ang = this.guardAngle(f);
+      const d = { x: Math.cos(ang), y: Math.sin(ang) };
+      const hilt = { x: S.x + d.x * 26, y: S.y + d.y * 26 + 10 };
+      const pos = {
+        head: [x + f * 3, ny - L.neck], neck: [x, ny], pelvis: [x, py],
+        elbowB: [x - f * 2, ny + 26], handB: [hilt.x, hilt.y],
+        elbowF: [x + f * 8, ny + 28], handF: [hilt.x + d.x * 10, hilt.y + d.y * 10],
+        kneeB: [x - f * 4, py + L.thigh * 0.95], footB: [x - f * 14, gy],
+        kneeF: [x + f * 14, py + L.thigh * 0.9], footF: [x + f * 18, gy],
+        hilt: [hilt.x, hilt.y], tip: [hilt.x + d.x * SABER_L, hilt.y + d.y * SABER_L],
+      };
+      this.p = N.map((n) => ({ x: pos[n][0], y: pos[n][1], px: pos[n][0], py: pos[n][1] }));
+      this.bones = {};
+      this.cons = [];
+      for (const b of BONES) {
+        const c = { i: I[b.i], j: I[b.j], len: b.len, name: b.name, th: b.th, cut: false };
+        this.bones[b.name] = c;
+        this.cons.push(c);
+      }
+      this.cons.push({ i: I.hilt, j: I.tip, len: SABER_L });
+      this.pins = {
+        B: [{ i: I.handB, j: I.hilt, len: 0 }],
+        F: [{ i: I.handF, j: I.hilt, len: 10 }, { i: I.handF, j: I.tip, len: SABER_L - 10 }],
+      };
+      this.cons.push(...this.pins.B, ...this.pins.F);
       Object.assign(this, {
-        x, y: PLAT.top - FOOT_Y, vx: 0, vy: 0, angle: 0, av: 0, facing,
-        grounded: true, coyote: 0, airJumps: 1, swing: -1, saberRel: -1.05, tuck: 0,
-        dead: false, burning: false, gone: false, bladeOn: false, bladeLen: 0,
-        clashCd: 0, tapCd: 0, time: Math.random() * 100, trail: [], blade: null, prevBlade: null,
+        facing, bodyX: x, aim: ang, jumpCd: 0, step: [null, null], plant: [pos.footB[0], pos.footF[0]],
+        armLost: { B: false, F: false }, legLost: { B: false, F: false },
+        dead: false, burning: false, deathCause: null, deathT: 0, disarmT: 0,
+        bladeOn: false, bladeLen: 0, stumps: [], trail: [], blade: null, prevBlade: null,
+        grounded: true, time: 0, lostParts: [], wounds: 0, woundCd: 0, woundMarks: [], cutCd: 0,
       });
       this.updateBlade();
-      this.prevBlade = null;
+      this.prevBlade = this.blade;
     }
 
-    l2w(lx, ly) {
-      const px = lx * this.facing, c = Math.cos(this.angle), s = Math.sin(this.angle);
-      return { x: this.x + px * c - ly * s, y: this.y + px * s + ly * c };
+    guardAngle(f) { return f > 0 ? -1.05 : Math.PI + 1.05; }
+    get pelvis() { return this.p[I.pelvis]; }
+    get neckP() { return this.p[I.neck]; }
+    get headP() { return this.p[this.bones.neck.j]; }
+    get legs() { return (this.legLost.B ? 0 : 1) + (this.legLost.F ? 0 : 1); }
+    get holding() { return !this.armLost.B || !this.armLost.F; }
+
+    // 외부 지지(바닥)로 당기기: 운동량을 만들어도 되는 경우
+    pull(p, tx, ty, k, c) {
+      const vx = p.x - p.px, vy = p.y - p.py;
+      p.x += (tx - p.x) * k - vx * c;
+      p.y += (ty - p.y) * k - vy * c;
     }
-    dirW(a) {
-      const lx = Math.cos(a) * this.facing, ly = Math.sin(a);
-      const c = Math.cos(this.angle), s = Math.sin(this.angle);
-      return { x: lx * c - ly * s, y: lx * s + ly * c };
+    // 몸 안의 근육: p 를 당긴 만큼 anchors 를 반대로 밀어 총 운동량 보존 (공중에서 스스로 날아가지 않게)
+    pullRel(p, tx, ty, k, c, anchors) {
+      let bx = 0, by = 0;
+      for (const a of anchors) { bx += a.x - a.px; by += a.y - a.py; }
+      bx /= anchors.length; by /= anchors.length;
+      const vx = p.x - p.px - bx, vy = p.y - p.py - by;
+      const dx = (tx - p.x) * k - vx * c, dy = (ty - p.y) * k - vy * c;
+      p.x += dx; p.y += dy;
+      const r = 1 / anchors.length;
+      for (const a of anchors) { a.x -= dx * r; a.y -= dy * r; }
     }
 
-    pose() {
-      const t = this.tuck;
-      return {
-        tuck: t,
-        hand: Skins.handPos(this.saberRel),
-        backHand: { x: U.lerp(-11, -17, t), y: U.lerp(-6 + Math.sin(this.time * 0.08) * 1.5, -24, t) },
-        blink: this.time % 200 < 6,
-      };
-    }
-
-    tap(game) {
-      if (this.dead || this.tapCd > 0) return false;
-      this.tapCd = 7;
-      const opp = game.opponentOf(this);
-      if (this.grounded || this.coyote > 0) {
-        this.angle = U.wrapAngle(this.angle);
-        this.vy = JUMP_VY;
-        this.vx = this.facing * JUMP_VX + this.vx * 0.2;
-        this.av = this.facing * JUMP_AV;
-        this.grounded = false; this.coyote = 0; this.y -= 2;
-        game.effects.dust(this.x, PLAT.top, 6);
-      } else if (this.airJumps > 0) {
-        this.airJumps--;
-        if (opp) {
-          const f = opp.x >= this.x ? 1 : -1;
-          if (f !== this.facing) { this.facing = f; this.angle = -this.angle; }
-        }
-        this.vy = AIR_VY;
-        this.vx = U.clamp(this.vx + this.facing * AIR_VX, -7.5, 7.5);
-        this.av = this.facing * AIR_AV;
-        game.effects.spark(this.x, this.y + 30, 4, '#9fd0ff');
-      }
-      if (this.swing < 0 || this.swing > SWING_FRAMES * 0.6) {
-        this.swing = 0;
-        Sfx.swing();
-      }
-      return true;
-    }
-
-    update(game) {
-      if (this.gone) return;
+    // inp: { mx, my, ax, ay, aiming }
+    update(game, inp) {
       this.time++;
-      if (this.tapCd > 0) this.tapCd--;
-      if (this.clashCd > 0) this.clashCd--;
+      if (this.jumpCd > 0) this.jumpCd--;
+      if (this.woundCd > 0) this.woundCd--;
+      if (this.cutCd > 0) this.cutCd--;
+      const gy = PLAT.top;
 
-      if (this.dead) {
-        if (this.burning) {
-          this.y += 0.7; this.angle += this.av * 0.2;
-          if (this.time % 3 === 0) game.effects.ember(this.x, LAVA_Y, 2, 14);
-          if (this.y > LAVA_Y + 90) this.gone = true;
-        }
-        return;
+      // 1) 적분
+      for (const p of this.p) {
+        const vx = (p.x - p.px) * 0.99, vy = (p.y - p.py) * 0.99;
+        p.px = p.x; p.py = p.y;
+        p.x += vx; p.y += vy + G;
       }
 
-      const wasG = this.grounded;
-      this.vy = Math.min(this.vy + G, 16);
-      this.x += this.vx; this.y += this.vy; this.angle += this.av;
-      if (!wasG) { this.av *= 0.993; this.vx *= 0.997; }
+      // 2) 근육
+      if (!this.dead) this.muscles(game, inp, gy);
+      else this.deathT++;
+      if (!this.dead && this.armLost.B && this.armLost.F && ++this.disarmT === 1) this.bladeOn = false;
 
-      // 바닥 충돌
-      let pen = 0, hit = false;
-      if (this.vy >= -1) {
-        for (const c of GROUND_PTS) {
-          const w = this.l2w(c.x, c.y);
-          if (w.x > PLAT.left - 4 && w.x < PLAT.right + 4 && w.y + c.r > PLAT.top && w.y - c.r < PLAT.top + 22) {
-            pen = Math.max(pen, w.y + c.r - PLAT.top);
-            hit = true;
+      // 3) 제약 반복 + 바닥
+      for (let it = 0; it < 10; it++) {
+        for (const c of this.cons) {
+          if (c.off) continue;
+          const a = this.p[c.i], b = this.p[c.j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const d = Math.hypot(dx, dy) || 0.0001;
+          const diff = (d - c.len) / d * 0.5;
+          a.x += dx * diff; a.y += dy * diff;
+          b.x -= dx * diff; b.y -= dy * diff;
+        }
+        for (const p of this.p) this.ground(p, gy);
+      }
+
+      // 4) 용암
+      for (const p of this.p) {
+        if (p.y > LAVA_Y + 4) {
+          p.px = p.x - (p.x - p.px) * 0.3;
+          p.py = p.y - 0.6;
+          if (this.time % 9 === 0 && p.y < LAVA_Y + 30) game.effects.ember(p.x, LAVA_Y, 1, 6);
+        }
+      }
+      if (!this.dead && this.pelvis.y > LAVA_Y - 10 && this.p[this.bones.torso.j].y > LAVA_Y - 60) game.onLava(this);
+
+      this.bladeLen = this.bladeOn ? Math.min(L.blade, this.bladeLen + 10) : Math.max(0, this.bladeLen - 9);
+      for (const s of this.stumps) {
+        s.t++;
+        if (s.t < 160 && s.t % 8 === 0) { const p = this.p[s.i]; game.effects.smoke(p.x, p.y, 1); }
+      }
+      this.updateBlade();
+    }
+
+    ground(p, gy) {
+      if (p.x > PLAT.left && p.x < PLAT.right && p.y > gy && p.py <= gy + 16) {
+        p.y = gy;
+        p.px = p.x - (p.x - p.px) * 0.55;
+      }
+    }
+
+    muscles(game, inp, gy) {
+      const P = this.p, pel = P[I.pelvis], neck = P[I.neck];
+      const torsoOK = !this.bones.torso.cut, neckOK = !this.bones.neck.cut;
+      const legs = this.legs;
+      const footOn = (k) => {
+        const f = P[I['foot' + k]];
+        return !this.legLost[k] && f.y >= gy - 3 && f.x > PLAT.left && f.x < PLAT.right;
+      };
+      const onGround = footOn('B') || footOn('F') || (legs === 0 && pel.y >= gy - 22 && pel.x > PLAT.left && pel.x < PLAT.right);
+      this.grounded = onGround;
+      const opp = game.opponentOf(this);
+      const f = this.facing;
+      const mx = U.clamp(inp.mx || 0, -1, 1), my = U.clamp(inp.my || 0, -1, 1);
+
+      // 상대 쪽 바라보기
+      if (opp && onGround) {
+        const d = opp.pelvis.x - pel.x;
+        if (d * f < -16) { this.facing = -f; this.aim = Math.PI - this.aim; }
+      }
+      // 걷기
+      if (onGround) {
+        const sp = legs === 2 ? 2.3 : legs === 1 ? 1.1 : 0.6;
+        this.bodyX = U.clamp(this.bodyX + mx * sp, pel.x - 24, pel.x + 24);
+      } else {
+        this.bodyX = pel.x;
+      }
+      // 골반 높이
+      const crouch = my > 0.35 ? (my - 0.35) * 40 : 0;
+      if (onGround) {
+        const h = legs === 2 ? STAND_H : legs === 1 ? STAND_H * 0.82 : 20;
+        // 발 사이 중심 위로 균형 잡기
+        let fx = this.bodyX;
+        if (legs === 2) fx = U.lerp(this.bodyX, (P[I.footB].x + P[I.footF].x) / 2, 0.35);
+        this.pull(pel, fx, gy - h + crouch, legs ? 0.3 : 0.1, 0.2);
+      }
+      // 상체 세우기
+      if (torsoOK) {
+        const k = onGround ? 0.38 : 0.2;
+        this.pullRel(neck, pel.x + mx * 6 + f * 2, pel.y - L.torso, k, 0.15, [pel]);
+      }
+      if (neckOK) this.pullRel(P[I.head], neck.x + f * 3, neck.y - L.neck, 0.35, 0.2, [neck]);
+      // 점프
+      if (onGround && legs > 0 && my < -0.6 && this.jumpCd <= 0) {
+        const pow = legs === 2 ? 11 : 7;
+        for (const p of P) { p.py += pow; p.px -= mx * 3; }
+        this.jumpCd = 45;
+        game.effects.dust(pel.x, gy, 8);
+      }
+      // 다리
+      const vel = pel.x - pel.px;
+      ['B', 'F'].forEach((k, li) => {
+        if (this.legLost[k]) return;
+        const knee = P[I['knee' + k]], foot = P[I['foot' + k]];
+        if (onGround && torsoOK) {
+          const home = this.bodyX + f * (k === 'F' ? 14 : -12) + vel * 7;
+          const other = this.step[1 - li];
+          let st = this.step[li];
+          if (!st && Math.abs(this.plant[li] - home) > 16 && !other) {
+            st = this.step[li] = { t: 0, from: this.plant[li], to: home + Math.sign(home - this.plant[li]) * 6 };
+          }
+          if (st) {
+            st.t += 1 / 8;
+            const t = Math.min(1, st.t);
+            this.pull(foot, U.lerp(st.from, st.to, t), gy - Math.sin(t * Math.PI) * 14, 0.6, 0.2);
+            if (st.t >= 1) { this.plant[li] = st.to; this.step[li] = null; }
+          } else if (foot.y >= gy - 2) {
+            foot.x += (this.plant[li] - foot.x) * 0.5; foot.px = foot.x;
+          } else {
+            this.pull(foot, this.plant[li], gy, 0.3, 0.2);
+          }
+          this.pullRel(knee, (pel.x + foot.x) / 2 + f * 5, (pel.y + foot.y) / 2, 0.3, 0.15, [pel]);
+        } else {
+          this.step[li] = null;
+          this.plant[li] = foot.x;
+          if (torsoOK) {
+            this.pullRel(foot, pel.x + f * (k === 'F' ? 10 : -6), pel.y + L.thigh + L.shin - 34, 0.1, 0.05, [pel]);
+            this.pullRel(knee, pel.x + f * 18, pel.y + L.thigh * 0.7, 0.12, 0.05, [pel]);
           }
         }
-      }
-      if (hit) {
-        this.y -= pen;
-        if (!wasG && this.vy > 5) { game.effects.dust(this.x, PLAT.top, 8); Sfx.thud(); }
-        this.vy = this.vy > 5 ? -this.vy * 0.2 : 0;
-        this.grounded = true; this.coyote = 6; this.airJumps = 1;
-        this.vx *= 0.8;
-        const a = U.wrapAngle(this.angle);
-        this.angle = a;
-        this.av = this.av * 0.5 - a * 0.14;
-        if (Math.abs(a) > 1.3 && this.vy === 0) this.vy = -2.5; // 넘어졌을 때 튕겨 일어나기
-        const opp = game.opponentOf(this);
-        if (opp && !opp.dead && Math.abs(a) < 0.5) {
-          const d = opp.x - this.x;
-          if (Math.abs(d) > 4) this.facing = d > 0 ? 1 : -1;
+      });
+      // 팔 & 광선검
+      if (this.holding && torsoOK) {
+        const target = inp.aiming ? Math.atan2(inp.ay, inp.ax) : this.guardAngle(this.facing);
+        const diff = U.angDiff(this.aim, target);
+        this.aim += U.clamp(diff, -AIM_RATE, AIM_RATE);
+        const d = { x: Math.cos(this.aim), y: Math.sin(this.aim) };
+        const tdx = pel.x - neck.x, tdy = pel.y - neck.y, tl = Math.hypot(tdx, tdy) || 1;
+        const S = { x: neck.x + tdx / tl * 12, y: neck.y + tdy / tl * 12 };
+        // 손은 가슴 앞에서 스틱 방향으로 뻗고, 칼날은 조준 방향을 향함
+        const mag = inp.aiming ? Math.min(1, Math.hypot(inp.ax, inp.ay)) : 0.4;
+        const reach = 14 + mag * 22;
+        const hx = S.x + this.facing * 14 + d.x * reach, hy = S.y + 16 + d.y * reach * 0.8;
+        this.pullRel(P[I.hilt], hx, hy, 0.35, 0.22, [neck, pel]);
+        this.pullRel(P[I.tip], hx + d.x * SABER_L, hy + d.y * SABER_L, 0.35, 0.22, [neck, pel]);
+        for (const k of ['B', 'F']) {
+          if (this.armLost[k] || this.bones['uarm' + k].cut) continue;
+          const e = P[I['elbow' + k]], h = P[I['hand' + k]];
+          this.pullRel(e, (S.x + h.x) / 2 - f * 2, (S.y + h.y) / 2 + 9, 0.1, 0.08, [neck]);
         }
-      } else {
-        this.grounded = false;
-        if (this.coyote > 0) this.coyote--;
       }
-
-      // 휘두르기 애니메이션
-      const idle = this.grounded ? -1.05 + Math.sin(this.time * 0.05) * 0.06 : -1.35;
-      if (this.swing >= 0) {
-        const t = this.swing / SWING_FRAMES;
-        this.saberRel = t < 0.2 ? U.lerp(idle, -2.5, t / 0.2) : U.lerp(-2.5, 0.9, U.easeOut((t - 0.2) / 0.8));
-        if (++this.swing > SWING_FRAMES) this.swing = -1;
-      } else {
-        this.saberRel += (idle - this.saberRel) * 0.12;
-      }
-      this.tuck = this.grounded ? Math.max(0, this.tuck - 0.2) : Math.min(1, this.tuck + 0.15);
-      this.bladeLen = this.bladeOn ? Math.min(BLADE_LEN, this.bladeLen + 7) : Math.max(0, this.bladeLen - 8);
-
-      if (this.y - 20 > LAVA_Y) game.onLava(this);
-
-      this.updateBlade();
     }
 
     updateBlade() {
-      const h = Skins.handPos(this.saberRel);
-      const hw = this.l2w(h.x, h.y);
-      const d = this.dirW(this.saberRel);
-      this.hilt = { x1: hw.x - d.x * HILT_HALF, y1: hw.y - d.y * HILT_HALF, x2: hw.x + d.x * HILT_HALF, y2: hw.y + d.y * HILT_HALF };
+      const h = this.p[I.hilt], t = this.p[I.tip];
+      const dx = t.x - h.x, dy = t.y - h.y, l = Math.hypot(dx, dy) || 1;
+      const ux = dx / l, uy = dy / l;
       this.prevBlade = this.blade;
-      this.blade = { x1: this.hilt.x2, y1: this.hilt.y2, x2: this.hilt.x2 + d.x * this.bladeLen, y2: this.hilt.y2 + d.y * this.bladeLen };
+      const bx = h.x + ux * L.hilt, by = h.y + uy * L.hilt;
+      this.hiltSeg = { x1: h.x, y1: h.y, x2: bx, y2: by };
+      this.blade = { x1: bx, y1: by, x2: bx + ux * this.bladeLen, y2: by + uy * this.bladeLen };
       this.trail.push({ ...this.blade });
       if (this.trail.length > 6) this.trail.shift();
     }
 
-    bladeSpeed() {
+    // 충돌 처리로 입자를 옮긴 뒤 칼날 위치만 다시 계산 (이전 프레임 값은 유지)
+    recalcBlade() {
+      const prev = this.prevBlade, trail = this.trail.slice(0, -1);
+      this.updateBlade();
+      this.prevBlade = prev;
+      this.trail = [...trail, { ...this.blade }];
+    }
+
+    bladeActive() { return this.bladeLen > 30; }
+    tipSpeed() {
       if (!this.prevBlade) return 0;
       return Math.hypot(this.blade.x2 - this.prevBlade.x2, this.blade.y2 - this.prevBlade.y2);
     }
-
-    // 휘두르는 중이거나 빠르게 회전 중인 검만 치명적
-    lethal() {
-      return this.swing >= 0 || this.bladeSpeed() > 5;
+    // 칼날 위 매개변수 t(0=손잡이 끝,1=칼끝) 지점의 속도
+    bladeVel(t) {
+      const b = this.blade, p = this.prevBlade || b;
+      const vx = U.lerp(b.x1 - p.x1, b.x2 - p.x2, t), vy = U.lerp(b.y1 - p.y1, b.y2 - p.y2, t);
+      return { x: vx, y: vy };
     }
 
-    // 내 광선검이 target 에 닿았는지 (프레임 사이 터널링 방지용 보간 선분 포함)
-    hits(target) {
-      if (this.bladeLen < 20 || target.dead) return null;
-      const b = this.blade, p = this.prevBlade;
-      const segs = [b];
-      if (p) {
-        segs.push({ x1: p.x2, y1: p.y2, x2: b.x2, y2: b.y2 });
-        segs.push({ x1: (p.x1 + p.x2) / 2, y1: (p.y1 + p.y2) / 2, x2: (b.x1 + b.x2) / 2, y2: (b.y1 + b.y2) / 2 });
-      }
-      for (const c of HIT_CIRCLES) {
-        const w = target.l2w(c.x, c.y);
-        for (const s of segs) {
-          const r = U.pointSeg(w.x, w.y, s.x1, s.y1, s.x2, s.y2);
-          if (r.d < c.r + 2) return { part: c.part, x: r.x, y: r.y };
+    sever(name, game, x, y, kick) {
+      const c = this.bones[name];
+      if (!c || c.cut) return false;
+      c.cut = true;
+      const a = this.p[c.i];
+      const ni = this.p.length;
+      this.p.push({ x: a.x, y: a.y, px: a.px, py: a.py });
+      this.stumps.push({ i: c.i, t: 0, bone: name, side: 'body' }, { i: ni, t: 0, bone: name, side: 'part' });
+      c.i = ni;
+      // 잘린 쪽에 칼의 운동량 일부 전달
+      const kids = this.subtree(c.j);
+      for (const k of kids) { const p = this.p[k]; p.px -= kick.x * 0.35; p.py -= kick.y * 0.35 + 1.5; }
+      this.lostParts.push(PART_NAME[name]);
+      if (name === 'neck' || name === 'torso') this.kill(game, 'cut');
+      if (name === 'uarmB' || name === 'farmB') this.loseArm('B');
+      if (name === 'uarmF' || name === 'farmF') this.loseArm('F');
+      if (name === 'thighB' || name === 'shinB') this.legLost.B = true;
+      if (name === 'thighF' || name === 'shinF') this.legLost.F = true;
+      game.effects.spark(x, y, 22, '#ffd27a');
+      game.effects.ember(x, y, 12);
+      game.effects.smoke(x, y, 5);
+      return true;
+    }
+    // 몸통 상처: 목→골반 뼈 위의 상대 위치(t)와 좌우 오프셋으로 저장해 몸과 함께 움직이게
+    addWound(x, y) {
+      const n = this.p[I.neck], c = this.bones.torso, pe = this.p[c.i];
+      const dx = pe.x - n.x, dy = pe.y - n.y, l2 = dx * dx + dy * dy || 1;
+      const t = U.clamp(((x - n.x) * dx + (y - n.y) * dy) / l2, 0.1, 0.9);
+      this.woundMarks.push({ t, age: 0 });
+    }
+    loseArm(k) {
+      if (this.armLost[k]) return;
+      this.armLost[k] = true;
+      for (const c of this.pins[k]) c.off = true;
+    }
+    subtree(j) { // 뼈 그래프에서 j 아래 입자들
+      const out = new Set([j]);
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const c of this.cons) {
+          if (!c.name) continue;
+          if (out.has(c.i) && !out.has(c.j)) { out.add(c.j); grew = true; }
         }
       }
-      return null;
+      return out;
     }
 
-    kill(part, game, attacker, hx, hy) {
+    kill(game, cause) {
+      if (this.dead) return;
       this.dead = true;
-      this.bladeOn = false;
-      const pose = this.pose();
-      const push = attacker ? attacker.facing : -this.facing;
-      // cut: { y: 절단 위치(로컬 픽셀), clear: 'below'|'above'|null, spot: 작은 절단면만 표시 }
-      const mk = (parts, px, py, r, cut, dvx, dvy, dav) => {
-        const spr = Skins.newSprite();
-        Skins.compose(spr, this.char, this.skin, pose, parts);
-        const canvas = spr.body;
-        canvas.getContext('2d').drawImage(spr.arm, 0, 0);
-        bakeCut(canvas, cut);
-        const w = this.l2w(px, py);
-        game.pieces.push(new Piece({
-          kind: 'body', canvas, px, py, r, smokeY: cut.y * 2,
-          x: w.x, y: w.y, angle: this.angle, facing: this.facing,
-          vx: this.vx * 0.5 + dvx, vy: Math.min(this.vy, 0) + dvy, av: this.av * 0.5 + dav,
-        }));
-      };
-      if (part === 'head') {
-        mk({ head: true }, 2, -43, 12, { y: -15 }, push * U.rand(2, 4), U.rand(-9, -6), U.rand(-0.4, 0.4));
-        mk({ legs: true, torso: true, frontArm: true }, 0, -5, 22, { y: -17, spot: true }, push * 1.5, -2, push * 0.05);
-      } else {
-        mk({ torso: true, head: true, frontArm: true }, 0, -22, 19, { y: 4, clear: 'below' }, push * U.rand(2.5, 4), U.rand(-7, -4), U.rand(-0.25, 0.25));
-        mk({ legs: true }, 0, 22, 15, { y: 2 }, push * 1, -2, push * 0.08);
-      }
-      // 떨어지는 광선검 손잡이
-      const hc = { x: (this.hilt.x1 + this.hilt.x2) / 2, y: (this.hilt.y1 + this.hilt.y2) / 2 };
-      game.pieces.push(new Piece({
-        kind: 'hilt', hiltStyle: this.data.hilt, px: 0, py: 0, r: 4, facing: 1,
-        x: hc.x, y: hc.y, angle: Math.atan2(this.hilt.y2 - this.hilt.y1, this.hilt.x2 - this.hilt.x1),
-        vx: this.vx + U.rand(-3, 3), vy: U.rand(-9, -5), av: U.rand(-0.5, 0.5),
-      }));
-      game.effects.spark(hx, hy, 26, '#ffd27a');
-      game.effects.ember(hx, hy, 14);
-      game.effects.smoke(hx, hy, 6);
+      this.bladeOn = false; // 손에서 놓친 광선검은 꺼진다
+      this.deathCause = cause;
+      this.deathT = 0;
     }
 
+    // ---------- 그리기 ----------
     draw(ctx) {
-      if (this.gone) return;
-      Skins.compose(this.spr, this.char, this.skin, this.pose());
-      if (this.dead) {
-        if (this.burning) {
-          Skins.blit(ctx, this.spr.body, this.x, this.y, this.angle, this.facing);
-          Skins.blit(ctx, this.spr.arm, this.x, this.y, this.angle, this.facing);
-        }
-        return;
-      }
-      Skins.blit(ctx, this.spr.body, this.x, this.y, this.angle, this.facing);
-      const h = this.hilt;
-      Skins.drawHilt(ctx, h.x1, h.y1, h.x2, h.y2, this.data.hilt);
-      Skins.blit(ctx, this.spr.arm, this.x, this.y, this.angle, this.facing);
-      if (this.bladeLen > 0) {
-        if (this.bladeSpeed() > 6) Skins.drawTrail(ctx, this.trail, this.data.blade);
+      const P = this.p, S = this.sprites, f = this.facing, B = this.bones;
+      const hide = (p) => p.y > LAVA_Y + 50;
+      const seg = (name, part, from) => {
+        const c = B[name], a = from || P[c.i], b = P[c.j];
+        if (hide(a) && hide(b)) return;
+        Skins.drawSeg(ctx, part, a.x, a.y, b.x, b.y, f);
+      };
+      // 어깨 위치: 몸통 방향으로 목에서 조금 아래
+      const neck = P[I.neck], tor = B.torso, pe = P[tor.i];
+      const tl = Math.hypot(pe.x - neck.x, pe.y - neck.y) || 1;
+      const sh = { x: neck.x + (pe.x - neck.x) / tl * 10, y: neck.y + (pe.y - neck.y) / tl * 10 };
+      const shB = { x: sh.x - f * 4, y: sh.y }, shF = { x: sh.x + f * 3, y: sh.y + 1 };
+
+      seg('uarmB', S.uarmB, B.uarmB.cut ? null : shB);
+      seg('farmB', S.farmB);
+      seg('thighB', S.thighB);
+      seg('shinB', S.shinB);
+      seg('thighF', S.thighF);
+      seg('shinF', S.shinF);
+      if (!(hide(P[tor.i]) && hide(P[tor.j]))) Skins.drawSeg(ctx, S.torso, P[tor.j].x, P[tor.j].y, P[tor.i].x, P[tor.i].y, f);
+      const nb = B.neck;
+      if (!hide(P[nb.j])) Skins.drawHead(ctx, S.head, P[nb.j].x, P[nb.j].y, P[nb.i].x, P[nb.i].y, f);
+      // 광선검
+      const hs = this.hiltSeg;
+      if (!hide(P[I.hilt])) Skins.drawHilt(ctx, hs.x1, hs.y1, hs.x2, hs.y2, this.data.hilt);
+      seg('uarmF', S.uarmF, B.uarmF.cut ? null : shF);
+      seg('farmF', S.farmF);
+      if (this.bladeLen > 0 && !hide(P[I.hilt])) {
+        if (this.tipSpeed() > 7) Skins.drawTrail(ctx, this.trail, this.data.blade);
         const b = this.blade;
         Skins.drawBlade(ctx, b.x1, b.y1, b.x2, b.y2, this.data.blade);
       }
-    }
-  }
-
-  // 광선검에 지져진 절단면을 스프라이트에 새김
-  function bakeCut(canvas, cut) {
-    const g = canvas.getContext('2d');
-    const row = Skins.OY + cut.y;
-    if (cut.clear === 'below') g.clearRect(0, row + 1, canvas.width, canvas.height);
-    if (cut.spot) {
-      g.fillStyle = '#ff7a20'; g.fillRect(Skins.OX - 2, row, 5, 2);
-      g.fillStyle = '#ffd27a'; g.fillRect(Skins.OX - 1, row, 3, 1);
-      return;
-    }
-    const img = g.getImageData(0, row, canvas.width, 1);
-    for (let x = 0; x < canvas.width; x++) {
-      if (img.data[x * 4 + 3] === 0) continue;
-      const hot = img.data[(x - 1) * 4 + 3] && img.data[(x + 1) * 4 + 3];
-      img.data[x * 4] = 255; img.data[x * 4 + 1] = hot ? 210 : 122; img.data[x * 4 + 2] = hot ? 122 : 32;
-    }
-    g.putImageData(img, 0, row);
-  }
-
-  // 잘린 신체 / 떨어진 광선검 조각
-  class Piece {
-    constructor(o) { Object.assign(this, o); this.t = 0; this.gone = false; this.sinking = false; }
-
-    update(game) {
-      if (this.gone) return;
-      this.t++;
-      if (this.sinking) {
-        this.y += 0.8; this.vx *= 0.9; this.x += this.vx;
-        if (this.t % 4 === 0) game.effects.ember(this.x, LAVA_Y, 1, 8);
-        if (this.y > LAVA_Y + 60) this.gone = true;
-        return;
+      // 몸통 상처 (빗금 모양으로 지져진 자국)
+      for (const w of this.woundMarks) {
+        w.age++;
+        const n = P[I.neck], pe2 = P[B.torso.i];
+        const x = Skins.q(U.lerp(n.x, pe2.x, w.t)), y = Skins.q(U.lerp(n.y, pe2.y, w.t));
+        ctx.fillStyle = Skins.OUT; ctx.fillRect(x - 10, y - 4, 20, 8);
+        ctx.fillStyle = w.age < 200 ? '#ff7a20' : '#5a1e10';
+        for (let k = -4; k <= 4; k++) ctx.fillRect(x + k * 2, y + Math.round(k * 0.6) - 1, 2, 2);
+        if (w.age < 120) { ctx.fillStyle = '#ffe2a0'; ctx.fillRect(x - 2, y - 2, 4, 2); }
       }
-      this.vy += G; this.x += this.vx; this.y += this.vy; this.angle += this.av;
-      if (this.vy >= 0 && this.x > PLAT.left && this.x < PLAT.right && this.y + this.r > PLAT.top && this.y - this.r < PLAT.top + 20) {
-        this.y = PLAT.top - this.r;
-        if (this.vy > 3) game.effects.dust(this.x, PLAT.top, 3);
-        this.vy = this.vy > 3 ? -this.vy * 0.3 : 0;
-        this.vx *= 0.82; this.av *= 0.75;
-      }
-      if (this.y > LAVA_Y) {
-        this.sinking = true;
-        game.effects.splash(this.x, LAVA_Y);
-        Sfx.lava();
-      }
-      // 절단면에서 연기
-      if (this.kind === 'body' && this.t < 150 && this.t % 7 === 0) {
-        const c = Math.cos(this.angle), s = Math.sin(this.angle);
-        const ly = this.smokeY - this.py;
-        game.effects.smoke(this.x - ly * s, this.y + ly * c, 1);
-      }
-    }
-
-    draw(ctx) {
-      if (this.gone) return;
-      if (this.kind === 'hilt') {
-        const c = Math.cos(this.angle) * 7, sn = Math.sin(this.angle) * 7;
-        Skins.drawHilt(ctx, this.x - c, this.y - sn, this.x + c, this.y + sn, this.hiltStyle);
-      } else {
-        Skins.blit(ctx, this.canvas, this.x, this.y, this.angle, this.facing, this.px, this.py);
+      // 지져진 절단면
+      for (const s of this.stumps) {
+        if (s.t > 240) continue;
+        const p = P[s.i];
+        if (hide(p)) continue;
+        const a = 1 - s.t / 240;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#ff7a20'; ctx.fillRect(Skins.q(p.x) - 4, Skins.q(p.y) - 2, 8, 4);
+        ctx.fillStyle = '#ffe2a0'; ctx.fillRect(Skins.q(p.x) - 2, Skins.q(p.y) - 2, 4, 2);
+        ctx.globalAlpha = 1;
       }
     }
   }
 
+  Fighter.I = I;
+  Fighter.SABER_L = SABER_L;
+  Fighter.CUT_V = CUT_V;
+  Fighter.PART_NAME = PART_NAME;
   window.Fighter = Fighter;
-  window.Piece = Piece;
 })();

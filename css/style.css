@@ -1,9 +1,16 @@
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('../fonts/Galmuri11-Bold.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: block;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  background: #120403; color: #f5e6c8;
-  font-family: system-ui, -apple-system, 'Noto Sans KR', sans-serif;
-  --pix: 'Press Start 2P', system-ui, monospace;
+  background: #120403; color: #efe4cf;
+  font-family: 'Galmuri11', monospace;
+  --pix: 'Galmuri11', monospace;
+  -webkit-font-smoothing: none; font-smooth: never;
   user-select: none; -webkit-user-select: none; touch-action: none;
 }
 #game { position: fixed; inset: 0; display: block; touch-action: none; image-rendering: pixelated; }
@@ -18,8 +25,8 @@ html, body {
 .hidden { display: none !important; }
 
 .logo {
-  font-family: var(--pix); font-weight: 400;
-  font-size: clamp(30px, 10vh, 76px); letter-spacing: 0.04em;
+  font-family: var(--pix); font-weight: 700;
+  font-size: clamp(40px, 14vh, 104px); letter-spacing: 0.02em;
   color: #ffe14d; text-shadow: 4px 4px 0 #7a2a00, 8px 8px 0 #120403;
   line-height: 1.1;
 }
@@ -63,7 +70,7 @@ label.btn { display: inline-flex; align-items: center; }
   padding: 1.6vh 12px; border-radius: 0; background: rgba(26, 10, 6, 0.85); border: 3px solid #120403; box-shadow: inset 0 0 0 3px #3a1d14, 5px 5px 0 #120403;
 }
 .pick-head { font-family: var(--pix); letter-spacing: 0.1em; color: #ffe14d; font-size: clamp(10px, 2.6vh, 14px); }
-.preview { height: min(40vh, 264px); width: auto; aspect-ratio: 240 / 264; max-width: 100%; image-rendering: pixelated; }
+.preview { height: min(44vh, 340px); width: auto; aspect-ratio: 260 / 340; max-width: 100%; image-rendering: pixelated; }
 .char-row { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: space-between; }
 .char-name { font-weight: 800; font-size: clamp(13px, 3.4vh, 19px); text-align: center; flex: 1; }
 .arrow {

@@ -8,8 +8,6 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <title>Saber Duel</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -18,7 +16,7 @@
   <!-- 타이틀 -->
   <section id="screen-title" class="screen">
     <h1 class="logo">SABER<span>DUEL</span></h1>
-    <p class="tag">무스타파의 결투 · 원버튼 광선검 대결</p>
+    <p class="tag">무스타파의 결투 · 래그돌 광선검 대전</p>
     <div class="menu">
       <button class="btn primary" data-mode="1p">1P vs CPU</button>
       <button class="btn" data-mode="2p">2P 대결 (한 기기)</button>
@@ -30,7 +28,7 @@
       <input id="bgm-file" type="file" accept="audio/*" hidden>
       <button id="bgm-clear" class="btn small" hidden>파일 해제</button>
     </div>
-    <p class="help">탭 = 상대에게 점프하며 베기 · 공중에서 한 번 더 탭 가능<br>광선검끼리 부딪히면 튕겨나고, 몸에 닿으면 한 방! 용암에 빠지면 패배. 5점 선취 승리.</p>
+    <p class="help">왼쪽 스틱으로 움직이고, 오른쪽 스틱으로 광선검을 휘둘러 상대의 팔다리를 베어내세요.<br>빠르게 휘두른 칼만 벱니다 · 목이나 몸통이 잘리거나, 양팔을 잃거나, 용암에 빠지면 패배 · 3점 선취</p>
     <button id="btn-mute" class="icon-btn" aria-label="소리">🔊</button>
   </section>
 
@@ -39,7 +37,7 @@
     <div class="sel-wrap">
       <div class="pick" data-side="0">
         <div class="pick-head">PLAYER 1</div>
-        <canvas class="preview" width="240" height="264"></canvas>
+        <canvas class="preview" width="260" height="340"></canvas>
         <div class="char-row">
           <button class="arrow prev" aria-label="이전 캐릭터">◀</button>
           <div class="char-name"></div>
@@ -65,7 +63,7 @@
 
       <div class="pick" data-side="1">
         <div class="pick-head">PLAYER 2</div>
-        <canvas class="preview" width="240" height="264"></canvas>
+        <canvas class="preview" width="260" height="340"></canvas>
         <div class="char-row">
           <button class="arrow prev" aria-label="이전 캐릭터">◀</button>
           <div class="char-name"></div>
@@ -106,6 +104,7 @@
   <script src="js/skins.js"></script>
   <script src="js/effects.js"></script>
   <script src="js/arena.js"></script>
+  <script src="js/input.js"></script>
   <script src="js/fighter.js"></script>
   <script src="js/bgm.js"></script>
   <script src="js/ai.js"></script>

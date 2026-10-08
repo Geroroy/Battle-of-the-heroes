@@ -1,54 +1,100 @@
-// CPU 상대: 시뮬레이션으로 튜닝한 탭 타이밍 규칙
-// - 상대가 공중에서 가까이 오면 맞받아 점프 (카운터)
-// - 적당한 거리(140~220)에서 선제 점프, 멀면 다가가기
-// - 낙하 중 가까우면 공중 점프로 베기, 플랫폼 밖으로 떨어지면 공중 점프로 복귀
+// CPU: 거리 유지 + 공격(들어올리기 → 내려베기/옆베기/다리베기) + 막기
 class AI {
   constructor(me, level) {
     this.me = me;
-    // react: 판단 지연(프레임), skill: 규칙대로 행동할 확률, save: 낙사 회피 확률
     this.cfg = [
-      { react: 22, skill: 0.35, save: 0.35 }, // 쉬움
-      { react: 7, skill: 0.75, save: 0.8 },  // 보통
-      { react: 2, skill: 1.0, save: 1.0 },   // 어려움
+      { react: 26, block: 0.15, pause: [120, 200], wind: 22, aimErr: 0.7, rate: 0.1 },   // 쉬움
+      { react: 14, block: 0.55, pause: [70, 130], wind: 15, aimErr: 0.3, rate: 0.18 },   // 보통
+      { react: 6, block: 0.9, pause: [40, 90], wind: 11, aimErr: 0.12, rate: 0.3 },      // 어려움
     ][level] || null;
-    this.cd = 30;
-    this.pending = 0;
+    this.state = 'guard';
+    this.t = 60;
+    this.ang = null;
+    this.target = null;
+    this.blockT = 0;
   }
 
-  decide(me, opp) {
+  // 조준 각도를 난이도별 속도로만 돌림 (쉬움일수록 느리고 막기 쉬운 베기)
+  input(game) {
+    const out = this.decide(game);
+    if (!out.aiming) { this.aimA = null; return out; }
+    const want = Math.atan2(out.ay, out.ax);
+    if (this.aimA === null || this.aimA === undefined) this.aimA = want;
+    this.aimA += U.clamp(U.angDiff(this.aimA, want), -this.cfg.rate, this.cfg.rate);
+    out.ax = Math.cos(this.aimA); out.ay = Math.sin(this.aimA);
+    return out;
+  }
+
+  decide(game) {
+    const me = this.me, opp = game.opponentOf(me), c = this.cfg;
+    const out = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false };
+    if (!c || me.dead || !opp) return out;
     const { PLAT } = CFG;
-    const d = Math.abs(opp.x - me.x);
-    const c = this.cfg;
-    if (me.grounded) {
-      if (Math.abs(U.wrapAngle(me.angle)) > 1.2) return Math.random() < 0.1;
-      const landX = me.x + me.facing * 200;
-      const safe = landX > PLAT.left + 30 && landX < PLAT.right - 30;
-      if (!opp.grounded && d < 90) return Math.random() < 0.45 * c.skill;
-      if (opp.grounded && d > 140 && d < 220) return Math.random() < 0.03 * c.skill;
-      if (opp.grounded && d >= 220) return Math.random() < (safe ? 0.012 : 0.003);
-      if (opp.grounded && d <= 140) return Math.random() < 0.008;
-      // 실력이 낮을수록 엉뚱한 타이밍에 탭
-      return Math.random() < 0.006 * (1 - c.skill);
-    }
-    if (me.airJumps <= 0) return false;
-    if ((me.x < PLAT.left + 10 || me.x > PLAT.right - 10) && me.vy > 0) return Math.random() < c.save;
-    if (d < 65 && me.vy > 0) return Math.random() < 0.21 * c.skill;
-    return false;
-  }
+    const pel = me.pelvis, op = opp.pelvis;
+    const dx = op.x - pel.x, dist = Math.abs(dx), f = dx >= 0 ? 1 : -1;
+    const sh = { x: me.neckP.x, y: me.neckP.y + 12 };
 
-  update(game) {
-    const me = this.me, opp = game.opponentOf(me);
-    if (!this.cfg || me.dead || !opp || opp.dead) return;
-    // 판단 후 반응 지연을 두고 실행
-    if (this.pending > 0) {
-      if (--this.pending === 0) game.input(me.side);
-      return;
+    // 이동: 사거리(약 150) 유지, 가장자리 피하기
+    const want = this.state === 'strike' || this.state === 'wind' ? 120 : 200;
+    if (!opp.dead) {
+      if (dist > want + 25) out.mx = f;
+      else if (dist < want - 45) out.mx = -f * 0.8;
     }
-    if (this.cd > 0) { this.cd--; return; }
-    if (this.decide(me, opp)) {
-      this.pending = Math.max(1, Math.round(this.cfg.react * (0.5 + Math.random())));
-      this.cd = 8;
+    if ((pel.x < PLAT.left + 70 && out.mx < 0) || (pel.x > PLAT.right - 70 && out.mx > 0)) out.mx = 0;
+    if (pel.x < PLAT.left + 50) out.mx = 0.8;
+    if (pel.x > PLAT.right - 50) out.mx = -0.8;
+    if (opp.dead) return out;
+
+    const aimAt = (x, y, err = 0) => {
+      const a = Math.atan2(y - sh.y, x - sh.x) + err;
+      out.ax = Math.cos(a); out.ay = Math.sin(a); out.aiming = true;
+    };
+
+    // 막기: 상대 칼끝이 빠르게 다가오면 칼을 그 사이에 둔다
+    const ob = opp.blade;
+    if (this.blockT > 0) {
+      this.blockT--;
+      aimAt((ob.x1 + ob.x2) / 2, (ob.y1 + ob.y2) / 2 - 10);
+      return out;
     }
+    if (opp.bladeActive() && opp.tipSpeed() > 7 && Math.hypot(ob.x2 - sh.x, ob.y2 - sh.y) < 190 && this.state !== 'strike') {
+      if (Math.random() < c.block * 0.25) { this.blockT = 10 + c.react; aimAt((ob.x1 + ob.x2) / 2, (ob.y1 + ob.y2) / 2); return out; }
+    }
+
+    this.t--;
+    switch (this.state) {
+      case 'guard':
+        if (this.t <= 0 && dist < 240) {
+          // 목표 부위 선택: 머리/목, 몸통, 다리, 팔
+          const r = Math.random();
+          const head = opp.headP, neck = opp.neckP;
+          if (r < 0.35) this.target = { x: neck.x, y: neck.y - 6, kind: 'high' };
+          else if (r < 0.6) this.target = { x: (neck.x + op.x) / 2, y: (neck.y + op.y) / 2, kind: 'mid' };
+          else if (r < 0.85) this.target = { x: op.x + f * 6, y: op.y + 50, kind: 'low' };
+          else this.target = { x: opp.p[Fighter.I.handF].x, y: opp.p[Fighter.I.handF].y, kind: 'arm' };
+          void head;
+          this.state = 'wind'; this.t = c.wind;
+        } else if (this.t <= 0) this.t = 10;
+        break;
+      case 'wind': {
+        // 반대쪽으로 크게 들어올리기
+        const a = this.target.kind === 'low' ? -Math.PI / 2 - f * 0.9 : -Math.PI / 2 - f * 0.5;
+        out.ax = Math.cos(a); out.ay = Math.sin(a); out.aiming = true;
+        if (this.t <= 0) { this.state = 'strike'; this.t = 16; }
+        return out;
+      }
+      case 'strike': {
+        const tg = this.target;
+        // 목표를 지나 끝까지 휘두르기
+        const err = (Math.random() - 0.5) * c.aimErr;
+        aimAt(tg.x + f * 40, tg.y + (tg.kind === 'low' ? 40 : 30), err);
+        if (this.t <= 0) { this.state = 'guard'; this.t = U.rand(c.pause[0], c.pause[1]); }
+        return out;
+      }
+    }
+    // 대기 중: 칼을 세워 방어 자세 (가끔 칼끝으로 견제)
+    if (Math.sin(me.time * 0.03 + me.side) > 0.6) aimAt(opp.neckP.x, opp.neckP.y - 80);
+    return out;
   }
 }
 window.AI = AI;

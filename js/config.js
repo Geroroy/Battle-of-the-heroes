@@ -2,10 +2,12 @@
 window.CFG = {
   W: 960,
   H: 540,
-  PLAT: { left: 150, right: 810, top: 400, thick: 24 },
-  LAVA_Y: 478,
-  G: 0.55,
-  WIN_SCORE: 5,
+  PLAT: { left: 130, right: 830, top: 446, thick: 24 },
+  LAVA_Y: 496,
+  G: 0.5,
+  WIN_SCORE: 3,
+  // 래그돌 뼈 길이 (논리 좌표, 스프라이트 1픽셀 = 2유닛)
+  BONE: { neck: 26, torso: 72, uarm: 34, farm: 34, thigh: 44, shin: 46, hilt: 22, blade: 112 },
 };
 
 window.U = {
@@ -19,6 +21,7 @@ window.U = {
     return a;
   },
   // 점과 선분 사이 최단 거리 (+ 가장 가까운 점)
+  angDiff(a, b) { return U.wrapAngle(b - a); },
   pointSeg(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1, dy = y2 - y1;
     const l2 = dx * dx + dy * dy;
@@ -36,15 +39,27 @@ window.U = {
       const t = ((b.x1 - a.x1) * d2y - (b.y1 - a.y1) * d2x) / den;
       const u = ((b.x1 - a.x1) * d1y - (b.y1 - a.y1) * d1x) / den;
       if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-        return { d: 0, x: a.x1 + d1x * t, y: a.y1 + d1y * t };
+        const x = a.x1 + d1x * t, y = a.y1 + d1y * t;
+        return { d: 0, x, y, ta: t, tb: u, ax: x, ay: y, bx: x, by: y };
       }
     }
-    const c = [
-      U.pointSeg(a.x1, a.y1, b.x1, b.y1, b.x2, b.y2),
-      U.pointSeg(a.x2, a.y2, b.x1, b.y1, b.x2, b.y2),
-      U.pointSeg(b.x1, b.y1, a.x1, a.y1, a.x2, a.y2),
-      U.pointSeg(b.x2, b.y2, a.x1, a.y1, a.x2, a.y2),
-    ];
-    return c.reduce((m, r) => (r.d < m.d ? r : m));
+    // 끝점-선분 4가지 중 최단 (ta/tb = 각 선분 위 매개변수, ax/ay·bx/by = 각 선분 위 최근접점)
+    const proj = (px, py, x1, y1, dx, dy) => {
+      const l2 = dx * dx + dy * dy;
+      let t = l2 > 0 ? ((px - x1) * dx + (py - y1) * dy) / l2 : 0;
+      return t < 0 ? 0 : t > 1 ? 1 : t;
+    };
+    const cand = [];
+    let t = proj(a.x1, a.y1, b.x1, b.y1, d2x, d2y); cand.push([0, t]);
+    t = proj(a.x2, a.y2, b.x1, b.y1, d2x, d2y); cand.push([1, t]);
+    t = proj(b.x1, b.y1, a.x1, a.y1, d1x, d1y); cand.push([t, 0]);
+    t = proj(b.x2, b.y2, a.x1, a.y1, d1x, d1y); cand.push([t, 1]);
+    let best = null;
+    for (const [ta, tb] of cand) {
+      const ax = a.x1 + d1x * ta, ay = a.y1 + d1y * ta, bx = b.x1 + d2x * tb, by = b.y1 + d2y * tb;
+      const d = Math.hypot(ax - bx, ay - by);
+      if (!best || d < best.d) best = { d, x: (ax + bx) / 2, y: (ay + by) / 2, ta, tb, ax, ay, bx, by };
+    }
+    return best;
   },
 };

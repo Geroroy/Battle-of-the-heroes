@@ -2,7 +2,7 @@
 class Effects {
   constructor() { this.p = []; }
 
-  add(o) { if (this.p.length < 600) this.p.push(o); }
+  add(o) { if (this.p.length < 900) this.p.push(o); }
 
   spark(x, y, n = 18, col = '#fff2b0') {
     for (let i = 0; i < n; i++) {
@@ -25,6 +25,10 @@ class Effects {
       this.add({ t: 'dust', x: x + U.rand(-10, 10), y, vx: U.rand(-2, 2), vy: U.rand(-1.5, -0.2), life: U.rand(18, 32), max: 32, size: U.rand(2, 5), g: 0.03 });
     }
   }
+  // 떨어지는 화산재 (Bloody Bastards의 비 대신)
+  ash(x, y) {
+    this.add({ t: 'ash', x, y, vx: U.rand(0.6, 1.4), vy: U.rand(1.4, 2.4), life: 400, max: 400, g: 0 });
+  }
   splash(x, y) {
     for (let i = 0; i < 26; i++) {
       this.add({ t: 'ember', x: x + U.rand(-14, 14), y, vx: U.rand(-3, 3), vy: U.rand(-8, -2), life: U.rand(30, 60), max: 60, size: U.rand(2, 4.5), g: 0.25 });
@@ -38,13 +42,16 @@ class Effects {
       const o = p[i];
       o.vy += o.g; o.x += o.vx; o.y += o.vy;
       if (o.t === 'smoke') o.size += 0.25;
-      if (--o.life <= 0) p.splice(i, 1);
+      if (--o.life <= 0 || (o.t === 'ash' && o.y > CFG.LAVA_Y)) p.splice(i, 1);
     }
   }
 
   // 2유닛(=1픽셀) 격자에 맞춘 사각 픽셀로 그림
   draw(ctx) {
     const q = Skins.q;
+    ctx.fillStyle = '#6b5a52';
+    ctx.globalAlpha = 0.55;
+    for (const o of this.p) if (o.t === 'ash') ctx.fillRect(q(o.x), q(o.y), 2, 2);
     for (const o of this.p) {
       if (o.t !== 'smoke' && o.t !== 'dust') continue;
       const a = Math.max(0, o.life / o.max);

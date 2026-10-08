@@ -1,9 +1,9 @@
 // 오프라인 플레이용 캐시 (네트워크 우선, 실패 시 캐시)
-const CACHE = 'saberduel-v2';
+const CACHE = 'saberduel-v3';
 const FILES = [
   './', './index.html', './manifest.json', './css/style.css', './icons/icon.svg',
   './js/config.js', './js/audio.js', './js/skins.js', './js/effects.js', './js/arena.js',
-  './js/fighter.js', './js/bgm.js', './js/ai.js', './js/game.js', './js/main.js',
+  './js/input.js', './js/fighter.js', './fonts/Galmuri11-Bold.woff2', './js/bgm.js', './js/ai.js', './js/game.js', './js/main.js',
 ];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
